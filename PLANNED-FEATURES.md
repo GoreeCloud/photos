@@ -1,4 +1,6 @@
-# GoreeCloud Photos — Feature Roadmap
+# GoreeCloud Photos — Planned Features
+
+> **Authority:** Repository-native planned-feature record. The former Drive roadmap is retired after verified migration.
 
 **Status:** Active roadmap control  
 **Lifecycle:** Experimental  
