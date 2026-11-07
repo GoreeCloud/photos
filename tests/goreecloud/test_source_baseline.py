@@ -46,6 +46,17 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_docs_leaf_security_overrides_are_lockfile_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        for name, old, new in (("dompurify", "3.4.12", "3.4.17"), ("shell-quote", "1.10.0", "1.11.0")):
+            with self.subTest(package=name):
+                self.assertIn("  " + name + ": " + new + "\n", workspace)
+                self.assertIn("  " + name + ": " + new + "\n", lock)
+                self.assertIn("  " + name + "@" + new + ":\n", lock)
+                self.assertNotIn(name + "@" + old, lock)
+                self.assertNotIn(name + ": " + old, lock)
+
     def test_fast_uri_security_override_and_lockfile_are_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
@@ -79,7 +90,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
@@ -99,6 +110,20 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertFalse((ROOT / ".github/ISSUE_TEMPLATE/bug_report.yaml").exists())
         self.assertIn("# Contributing to GoreeCloud Photos", (ROOT / "CONTRIBUTING.md").read_text())
         self.assertTrue((ROOT / "docs/UPSTREAM-CONTRIBUTING.md").is_file())
+
+    def test_inherited_docs_build_is_manual_and_no_deployment(self) -> None:
+        workflow = (ROOT / ".github/workflows/goreecloud-docs-build.yml").read_text(encoding="utf-8")
+        self.assertIn("on:\n  workflow_dispatch:", workflow)
+        self.assertNotIn("\n  push:", workflow)
+        self.assertNotIn("\n  pull_request:", workflow)
+        self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("actions/checkout@" + CHECKOUT_SHA, workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("submodules: false", workflow)
+        self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", workflow)
+        self.assertIn("pnpm --dir docs run build", workflow)
+        self.assertIn("verify_docs_build.py", workflow)
+        self.assertNotIn("docs run deploy", workflow)
 
     def test_dependency_advisory_preflight_is_manual_and_read_only(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-dependency-audit.yml").read_text(encoding="utf-8")
