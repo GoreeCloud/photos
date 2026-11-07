@@ -43,6 +43,8 @@ overrides:
   tinypool: 2.2.0
   # Backported GHSA fixes in v1 only; retain unrelated brace-expansion v2/v5 graphs
   'brace-expansion@1': 1.1.20
+  # Upstream 1.16.2 fixes request header/redirect handling advisories without major upgrade
+  follow-redirects: 1.16.2
 packageExtensions:
   nestjs-kysely:
     dependencies:
