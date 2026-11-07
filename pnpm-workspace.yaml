@@ -47,6 +47,8 @@ overrides:
   follow-redirects: 1.16.2
   # Joi 17.x patched messages/prototype and validation security advisories
   joi: 17.13.9
+  # Express 4 docs tooling security backport; retain direct Photos server body-parser 2.x
+  'body-parser@1': 1.20.9
 packageExtensions:
   nestjs-kysely:
     dependencies:
