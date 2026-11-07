@@ -22,7 +22,7 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 
 - [x] Central GoreeCloud Photos app icon adopted into web favicon, SVG icon and PWA icons; 180px Apple icon derived from an approved raster.
 - [x] Web/PWA display name uses GoreeCloud Photos.
-- [x] Adopt verified central light/dark wordmarks in a shared web component and replace five primary UI logo surfaces plus the browser title at source level; builds and rendering on this exact source remain pending.
+- [x] Adopt verified central light/dark wordmarks in shared web component and replace five primary UI logo surfaces plus browser title at source level. The updated source passed [latest main web compilation #42417477789](https://github.com/GoreeCloud/photos/actions/runs/42417477789); browser-rendered visual acceptance remains pending.
 - [ ] Replace remaining inherited product logos and brand-specific copy in app web surfaces without altering compatibility contracts.
 - [ ] Adopt the current GoreeCloud UI token semantics, components and theme behavior after inspecting concrete consumer integration points.
 - [ ] Verify affected pages, empty/error/loading states and responsive layouts through actual browser rendering.
@@ -42,8 +42,8 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 
 - [ ] Build web/server/mobile and service images in a disposable, dependency-reviewed environment.
 - [x] [Manual isolated build #42416035395](https://github.com/GoreeCloud/photos/actions/runs/42416035395) **passed** pinned Node/pnpm setup, no-lifecycle-script dependency install, explicit local SDK TypeScript compilation, inherited SvelteKit/Vite web compilation, and first-party PWA/asset byte validation. This is a source-build acceptance only, not a production, browser-UX or application-service test.
-- [ ] Run the subsequent loopback-only HTTP static-delivery contract (HTML shell, JSON manifest, five official assets, GET/HEAD) in an isolated runner. This is not browser JS interaction or an application backend test.
-- [ ] A manually dispatched, isolated [server compilation check](../.github/workflows/goreecloud-server-build.yml) proves that the inherited SDK, plugin SDK and Nest server can compile without database, real photos, service startup or package-install lifecycle scripts. This is a build-only evidence gate, still pending.
+- [x] [Loopback HTTP static-delivery CI #42416380403](https://github.com/GoreeCloud/photos/actions/runs/42416380403) passed HTML shell, JSON manifest, five approved first-party assets, GET/HEAD in a disposable runner. [Latest branded-main rerun #42417477789](https://github.com/GoreeCloud/photos/actions/runs/42417477789) also passed on main 459a87b. Neither is browser JS interaction or backend API acceptance.
+- [x] [Manual isolated server compilation #42417305584](https://github.com/GoreeCloud/photos/actions/runs/42417305584) **passed** pinned dependency install with lifecycle scripts disabled, SDK, plugin SDK, Nest build, and generated artifact checks. No database, private media, service startup or production use; this accepts compilation only.
 - [ ] Test import, upload, metadata, albums, search, sharing, auth and media operations with synthetic images/videos only.
 - [ ] Verify persistence, encrypted transport, storage isolation, backup, restore, migrations, upgrade and rollback.
 - [ ] Observe resource use, health monitoring and failure behavior; establish reproducible accepted install.
@@ -70,3 +70,11 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 - [PR #4](https://github.com/GoreeCloud/photos/pull/4) merged the deliberate SDK-first build prerequisite to [main 95a5652](https://github.com/GoreeCloud/photos/commit/95a565262507bd700c82a64dcfff1ff1af665916). PR and post-merge static CI passed.
 - The [second manual web build #42416035395](https://github.com/GoreeCloud/photos/actions/runs/42416035395) **PASSED**: TypeScript SDK, full SvelteKit/Vite web source compilation, and generated PWA manifest and official icon integrity. No secrets, real photos, app server or deployment were used.
 - This accepts **only** a disposable browser-source compilation and generated static artifacts; actual interactive web behavior, API/backend, security/privacy, media workflows, cross-platform devices and recovery remain unverified.
+
+
+### Current-main web + server build acceptance — November 7, 2026
+
+- [Main commit 459a87b](https://github.com/GoreeCloud/photos/commit/459a87b3894a7c52ff54f5a92917bcdef54dc305) contains the official Photos primary logo work and manually triggered server source build gate. [Post-merge static integrity](https://github.com/GoreeCloud/photos/actions/runs/42417295642) passed.
+- [Manual backend build #42417305584](https://github.com/GoreeCloud/photos/actions/runs/42417305584) **PASSED** SDK TypeScript, plugin SDK bundling/declarations, Nest server compilation and static dist output checks; no server process was launched.
+- [Manual branded-main web build #42417477789](https://github.com/GoreeCloud/photos/actions/runs/42417477789) **PASSED** SDK compilation, SvelteKit/Vite build, official asset hash checks, and loopback GET/HEAD static-delivery smoke. This includes source-level first-party logo and title changes.
+- **Not accepted:** Interactive client UI, authenticated API, real server/database, uploads, photo processing, privacy/security, mobile apps, backup/restore, or deployment. Static loopback delivery and TypeScript compilation are not a service-level smoke test.
