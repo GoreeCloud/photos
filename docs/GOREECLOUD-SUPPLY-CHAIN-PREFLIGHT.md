@@ -108,3 +108,8 @@ A new owner-triggered workflow performs pinned pnpm 12.16.1 audit JSON reporting
 ### Joi 17.x documentation-toolchain security patch — November 7, 2026
 
 [PR #23](https://github.com/GoreeCloud/photos/pull/23) merged Joi 17.13.9 after passing hosted [source](https://github.com/GoreeCloud/photos/actions/runs/42423274342), [docs](https://github.com/GoreeCloud/photos/actions/runs/42423285822), [web](https://github.com/GoreeCloud/photos/actions/runs/42423288288), and [server](https://github.com/GoreeCloud/photos/actions/runs/42423290786) compilation/integrity checks. The [advisory rerun #42423293198](https://github.com/GoreeCloud/photos/actions/runs/42423293198) remained red: full pnpm workspace 1 critical/23 high/26 moderate/7 low; pnpm production scope 0 critical/15 high/23 moderate/4 low. No runtime Photos service, user media or deployment was included.
+
+
+### Express 4 body-parser 1.x targeted patch — November 7, 2026
+
+[PR #24](https://github.com/GoreeCloud/photos/pull/24) merged a major-scoped body-parser 1.20.9 patch while preserving Photos server body-parser 2.4.0. Pinned, disposable [docs](https://github.com/GoreeCloud/photos/actions/runs/42423623708), [web](https://github.com/GoreeCloud/photos/actions/runs/42423625948), [server](https://github.com/GoreeCloud/photos/actions/runs/42423628000) and source checks passed. [Advisory run #42423630074](https://github.com/GoreeCloud/photos/actions/runs/42423630074) remained red: full 1 critical/22 high/26 moderate/7 low; production dependency scope (including inherited docs) 0 critical/14 high/23 moderate/4 low. No live service or private media was tested or deployed.
