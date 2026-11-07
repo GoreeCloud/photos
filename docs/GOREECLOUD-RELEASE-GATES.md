@@ -13,6 +13,7 @@
 - [x] Local read-only Python integrity suite checks pinned license/README, upstream provenance, workflow quarantine, branding and gitlink.
 - [x] [PR #1 source integrity CI](https://github.com/GoreeCloud/photos/actions/runs/42414650696) and [post-merge main CI](https://github.com/GoreeCloud/photos/actions/runs/42414719402) passed on November 7, 2026 for main commit [45860140](https://github.com/GoreeCloud/photos/commit/45860140fcdb6b6071495e5cdb86caa46130332d). This accepts only the narrowly scoped static checks.
 - [ ] Dependency license, vulnerability, provenance, third-party asset, executable script and secrets review is accepted.
+- [ ] [pnpm advisory triage (November 7, 2026)](GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md): high/critical findings remain open. The manual full/production-scope scans failed as expected; source path tracing is preliminary, not remediation or a release waiver.
 
 See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) for inspected dependency and automation surfaces.
 

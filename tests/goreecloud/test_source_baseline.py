@@ -164,6 +164,15 @@ class SourceBaselineTests(unittest.TestCase):
                 mod.main()
             self.assertIn("PASS: loopback-only HTTP", captured.getvalue())
 
+    def test_security_advisory_release_blocker_is_documented(self) -> None:
+        gates = (ROOT / "docs/GOREECLOUD-RELEASE-GATES.md").read_text(encoding="utf-8")
+        triage = (ROOT / "docs/GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md").read_text(encoding="utf-8")
+        self.assertIn("GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md", gates)
+        self.assertIn("release-blocking", triage)
+        self.assertIn("42418292059", triage)
+        self.assertIn("fast-uri 3.1.4", triage)
+        self.assertIn("not a complete dependency", triage)
+
     def test_deployment_env_contains_only_secret_manager_references(self) -> None:
         # Prevent accidental future substitution of literal credentials into this
         # tracked upstream deployment file; the file is never sourced/executed.
