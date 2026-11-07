@@ -46,6 +46,17 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_follow_redirects_security_patch_is_lockfile_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  follow-redirects: 1.16.2\n", workspace)
+        self.assertIn("  follow-redirects: 1.16.2\n", lock)
+        self.assertIn("  follow-redirects@1.16.2:\n    resolution:", lock)
+        self.assertIn("      follow-redirects: 1.16.2(", lock)
+        self.assertNotIn("follow-redirects@1.16.0", lock)
+        self.assertNotIn("follow-redirects: 1.16.0", lock)
+        self.assertIn("  fast-uri@3.1.9:\n", lock)
+
     def test_brace_expansion_v1_scoped_patch_keeps_other_major_lines(self) -> None:
         import re
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
