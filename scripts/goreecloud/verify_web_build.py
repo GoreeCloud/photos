@@ -17,6 +17,8 @@ FILES = [
     "goreecloud-photos-192.png",
     "goreecloud-photos-512.png",
     "apple-icon-180.png",
+    "goreecloud-photos-logo.svg",
+    "goreecloud-photos-logo-dark.svg",
 ]
 
 

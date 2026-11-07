@@ -9,7 +9,8 @@
   import { handleError } from '#lib/utils/handle-error.ts';
   import { navigate } from '#lib/utils/navigation.ts';
   import { SharedLinkType, sharedLinkLogin, type AssetResponseDto, type SharedLinkResponseDto } from '@immich/sdk';
-  import { Button, Logo, PasswordInput } from '@immich/ui';
+  import GoreeCloudPhotosLogo from '#lib/components/shared-components/GoreeCloudPhotosLogo.svelte';
+  import { Button, PasswordInput } from '@immich/ui';
   import { onDestroy, tick } from 'svelte';
   import { t } from 'svelte-i18n';
 
@@ -43,7 +44,7 @@
       sharedLink = await sharedLinkLogin({ key, slug, sharedLinkLoginDto: { password } });
       setSharedLink(sharedLink);
       passwordRequired = false;
-      title = (sharedLink.album ? sharedLink.album.albumName : $t('public_share')) + ' - Immich';
+      title = (sharedLink.album ? sharedLink.album.albumName : $t('public_share')) + ' - GoreeCloud Photos';
       await tick();
       await navigate(
         { targetRoute: 'current', assetId: null, assetGridRouteSearchParams: assetViewerManager.gridScrollTarget },
@@ -88,7 +89,7 @@
     <ControlAppBar>
       {#snippet leading()}
         <a data-sveltekit-preload-data="hover" class="ms-4" href="/">
-          <Logo variant="inline" />
+          <GoreeCloudPhotosLogo variant="wordmark" class="h-10 w-auto" />
         </a>
       {/snippet}
 

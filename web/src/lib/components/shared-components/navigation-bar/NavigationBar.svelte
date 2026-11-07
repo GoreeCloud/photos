@@ -13,7 +13,8 @@
   import { getGlobalActions } from '#lib/services/app.service.ts';
   import { mediaQueryManager } from '#lib/stores/media-query-manager.svelte.ts';
   import { sidebarStore } from '#lib/stores/sidebar.svelte.ts';
-  import { ActionButton, Button, IconButton, Logo } from '@immich/ui';
+  import GoreeCloudPhotosLogo from '#lib/components/shared-components/GoreeCloudPhotosLogo.svelte';
+  import { ActionButton, Button, IconButton } from '@immich/ui';
   import { mdiBellBadge, mdiBellOutline, mdiMagnify, mdiMenu, mdiTrayArrowUp } from '@mdi/js';
   import { createQuery } from '@tanstack/svelte-query';
   import { t } from 'svelte-i18n';
@@ -70,7 +71,10 @@
         class="sidebar:hidden"
       />
       <a data-sveltekit-preload-data="hover" href={Route.photos()}>
-        <Logo variant={mediaQueryManager.isFullSidebar ? 'inline' : 'icon'} class="max-md:h-12" />
+        <GoreeCloudPhotosLogo
+          variant={mediaQueryManager.isFullSidebar ? 'wordmark' : 'icon'}
+          class={mediaQueryManager.isFullSidebar ? 'h-10 w-auto max-w-44' : 'size-10 max-md:size-12'}
+        />
       </a>
     </div>
     <div class="flex justify-between gap-4 pe-6 lg:gap-8">

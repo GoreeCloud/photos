@@ -27,6 +27,8 @@ BRAND_ASSET_HASHES = {
     "goreecloud-photos-192.png": "33ca452348119cfc3e085362084a7a4425a55159f989170a801a2d1bf08562bf",
     "goreecloud-photos-512.png": "03f9c527e95ab553a9b54cc1943743a8bba2e3757835b61befa3fe0c1dddfa19",
     "apple-icon-180.png": "b151decee7e040ec32e3f3d07e427415f2a1738766a4bc918b45fd4e08f334f2",
+    "goreecloud-photos-logo.svg": "5955b3f5653f48302d18b1ffbd173b2adce1211d531b7f81da892f6e5bf2d6e0",
+    "goreecloud-photos-logo-dark.svg": "f549bcb33ae0962bafa0d1e7e7bab635e42a54835e46999daff0bf97467be302",
 }
 SOURCE_CHECK = "goreecloud-source-checks.yml"
 CHECKOUT_SHA = "11bd71901bbe5b1630ceea73d27597364c9af683"
@@ -122,7 +124,8 @@ class SourceBaselineTests(unittest.TestCase):
             (out / "index.html").write_text("<!doctype html><html><body>synthetic shell</body></html>")
             (out / "manifest.json").write_bytes((WEB / "manifest.json").read_bytes())
             for name in ("icon.svg", "favicon.ico", "goreecloud-photos-192.png",
-                         "goreecloud-photos-512.png", "apple-icon-180.png"):
+                         "goreecloud-photos-512.png", "apple-icon-180.png",
+                         "goreecloud-photos-logo.svg", "goreecloud-photos-logo-dark.svg"):
                 (out / name).write_bytes((WEB / name).read_bytes())
             mod.OUTPUT = out
             captured = io.StringIO()
@@ -188,6 +191,28 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(png_dimensions(WEB / "apple-icon-180.png"), (180, 180))
         for old in ("manifest-icon-192.maskable.png", "manifest-icon-512.maskable.png"):
             self.assertFalse((WEB / old).exists(), old)
+
+    def test_primary_web_brand_identity_surfaces_use_official_component(self) -> None:
+        component = (ROOT / "web/src/lib/components/shared-components/GoreeCloudPhotosLogo.svelte").read_text()
+        self.assertIn('src="/icon.svg"', component)
+        self.assertIn('src="/goreecloud-photos-logo.svg"', component)
+        self.assertIn('src="/goreecloud-photos-logo-dark.svg"', component)
+        self.assertIn("dark:hidden", component)
+        self.assertIn("dark:block", component)
+        for path in (
+            "web/src/lib/components/layouts/AuthPageLayout.svelte",
+            "web/src/lib/components/shared-components/navigation-bar/NavigationBar.svelte",
+            "web/src/routes/auth/onboarding/OnboardingHello.svelte",
+            "web/src/routes/ErrorLayout.svelte",
+            "web/src/lib/components/pages/SharedLinkPage.svelte",
+        ):
+            with self.subTest(path=path):
+                text = (ROOT / path).read_text()
+                self.assertIn("GoreeCloudPhotosLogo", text)
+                self.assertNotIn("<Logo ", text)
+        layout = (ROOT / "web/src/routes/+layout.svelte").read_text()
+        self.assertIn(" - GoreeCloud Photos</title>", layout)
+        self.assertNotIn(" - Immich</title>", layout)
 
     def test_brand_asset_byte_integrity(self) -> None:
         for path, digest in BRAND_ASSET_HASHES.items():
