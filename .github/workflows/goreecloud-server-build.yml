@@ -1,0 +1,44 @@
+name: GoreeCloud Photos isolated server compile (experimental)
+
+# Not a deployment or runtime/security test. Owner-triggered only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server-compile:
+    name: Disposable server TypeScript compilation without media or DB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: 'true'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Checkout tracked files without credentials or submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Prepare pinned Node toolchain
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Prepare pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.16.1 --activate
+          pnpm --version
+      - name: Install lockfile dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
+      - name: Compile SDK TypeScript workspace
+        run: pnpm --filter @immich/sdk run build
+      - name: Compile plugin SDK workspace
+        run: pnpm --filter @immich/plugin-sdk run build
+      - name: Compile inherited Nest server only
+        run: pnpm --dir server run build
+      - name: Check generated server output without starting it
+        run: python3 scripts/goreecloud/verify_server_build.py

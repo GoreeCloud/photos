@@ -68,7 +68,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
@@ -88,6 +88,22 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertFalse((ROOT / ".github/ISSUE_TEMPLATE/bug_report.yaml").exists())
         self.assertIn("# Contributing to GoreeCloud Photos", (ROOT / "CONTRIBUTING.md").read_text())
         self.assertTrue((ROOT / "docs/UPSTREAM-CONTRIBUTING.md").is_file())
+
+    def test_isolated_server_build_is_manual_and_least_privilege(self) -> None:
+        workflow = (ROOT / ".github/workflows/goreecloud-server-build.yml").read_text(encoding="utf-8")
+        self.assertIn("on:\n  workflow_dispatch:", workflow)
+        self.assertNotIn("\n  push:", workflow)
+        self.assertNotIn("\n  pull_request:", workflow)
+        self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("actions/checkout@" + CHECKOUT_SHA, workflow)
+        self.assertIn("actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("submodules: false", workflow)
+        self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", workflow)
+        self.assertIn("pnpm --filter @immich/sdk run build", workflow)
+        self.assertIn("pnpm --filter @immich/plugin-sdk run build", workflow)
+        self.assertIn("pnpm --dir server run build", workflow)
+        self.assertIn("python3 scripts/goreecloud/verify_server_build.py", workflow)
 
     def test_isolated_web_build_is_manual_and_least_privilege(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-web-build.yml").read_text(encoding="utf-8")
