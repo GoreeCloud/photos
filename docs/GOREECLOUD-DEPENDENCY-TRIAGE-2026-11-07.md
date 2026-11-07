@@ -91,3 +91,12 @@ The isolated candidate pins tinypool 2.2.0 through the existing pnpm override me
 - PR #18 proposed a narrower package-scoped override but overlapped the already merged candidate and was closed without merging; a separate future change can evaluate the narrower selector with fresh frozen builds. The current global pin is tested against this source, not an unconditional policy for future dependency additions.
 
 **Gate remains open:** Wardveil must still triage and remediate remaining high findings, audit other language/container/mobile dependency graphs, and verify runtime authentication, privacy controls, media processing and recovery before any Stable/deployment decision.
+
+
+## Brace-expansion 1.x security candidate — pending hosted compatibility
+
+The full and production pnpm audit reports multiple high-severity advisory entries for brace-expansion. The imported lockfile contains version 1.1.15 as well as independent version 2.1.7 and 5.0.12 lines. The static ancestry analysis found version 1.1.15 in the documentation build toolchain and the server's development dependencies; some server runtime paths resolve a different major. **Presence in pnpm's production-dependency scope is not proof that an affected expansion path is reachable through the Photos service.**
+
+The official [juliangruber/brace-expansion](https://github.com/juliangruber/brace-expansion) v1.1.15 and v1.1.20 package manifests and the [v1.1.15–v1.1.20 source comparison](https://github.com/juliangruber/brace-expansion/compare/v1.1.15...v1.1.20) were inspected. Version 1.1.20 retains MIT licensing, the same two dependencies, and adds vulnerability regression tests. The candidate uses a selector restricted to the **1.x line** so it does not replace unrelated v2.x/v5.x dependencies. This is a patch-line update, but a vulnerable expansion library may have behavioral security changes: no compatibility is presumed without verification.
+
+Only metadata-only lockfile resolution is performed locally, with install lifecycle scripts disabled. Before accepting the candidate, verify the exact source SHA through read-only source integrity, manual isolated docs/web/server frozen-lockfile builds, and a new full and production pnpm advisory run. Do not mark Wardveil security, app service functionality, real user data handling or release readiness complete.
