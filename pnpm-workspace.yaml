@@ -39,6 +39,8 @@ overrides:
   # Documentation dependency advisory fixes: DOMPurify and shell-quote
   dompurify: 3.4.17
   shell-quote: 1.11.0
+  # Scope the tinypool major security upgrade to Docusaurus; validate docs build before merge
+  '@docusaurus/core>tinypool': 2.2.0
 packageExtensions:
   nestjs-kysely:
     dependencies:

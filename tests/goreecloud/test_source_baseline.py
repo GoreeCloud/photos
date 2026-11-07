@@ -46,6 +46,16 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_docusaurus_tinypool_override_is_scoped_to_docs_core(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        selector = "'@docusaurus/core>tinypool': 2.2.0"
+        self.assertIn(selector, workspace)
+        self.assertIn(selector, lock)
+        self.assertIn("  tinypool@2.2.0:", lock)
+        self.assertNotIn("  tinypool@1.1.1:", lock)
+        self.assertIn("      tinypool: 2.2.0", lock)
+
     def test_docs_leaf_security_overrides_are_lockfile_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
