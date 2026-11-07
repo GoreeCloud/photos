@@ -34,3 +34,12 @@
 - Review OAuth, token/session storage, file URLs, metadata privacy, retention, encrypted transport and database/backup behavior.
 - Verify exact container/image provenance, mobile permissions, reproducible builds and rollback.
 - Require explicit per-gate evidence in docs/GOREECLOUD-RELEASE-GATES.md before deployment.
+
+
+## Controlled experimental build mechanism (pending)
+
+An owner-triggered (workflow_dispatch-only) GitHub Actions workflow stages Node 24 and pnpm@12.16.1 on a disposable Ubuntu 24.04 runner. It checks out source without submodules/persistent GitHub credentials; installs lockfile dependencies with --ignore-scripts; attempts only the inherited web Vite build; and verifies exported web icon/PWA assets byte-for-byte against approved source. The workflow uses contents: read, no secrets, no cache and no deployment targets.
+
+Source review before enabling: root package scripts are formatting-only; the inherited pnpmfile hook contains a package-manifest rewrite for exiftool-vendored dependencies; web build script invokes Vite; Vite configuration imports SvelteKit, Tailwind and image plugins, plus a local CSP manifest writer. Indirect dependencies, plugins and generated output are not fully reviewed, so the disposable runner and read-only credentials are required safeguards. The build is **not** a production-security approval.
+
+Inherited web Vite development configuration currently permits all dev-server Hosts and contains upstream product/payment URLs. Do not expose that dev server publicly or interpret upstream purchase links as GoreeCloud-approved. Review and replace such links before interface release.

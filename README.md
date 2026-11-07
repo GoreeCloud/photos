@@ -37,6 +37,6 @@ All 27 imported GitHub Actions workflows remain quarantined in [docs/upstream-gi
 2. Continue verified GoreeCloud UI branding beyond the [official web/PWA icon adoption](docs/GOREECLOUD-BRAND-ADOPTION.md), and lawfully replace remaining upstream trademark-bearing assets.
 3. Plan and validate GoreeCloud Identity, GoreeShield privacy, Wardveil security and GoreeCloud Mesh integration boundaries.
 4. Test builds, authentication, installation, migration, backup/recovery, native mobile clients and accessibility using synthetic data.
-5. Expand the narrowly scoped [static source integrity CI](.github/workflows/goreecloud-source-checks.yml) only after reviewing scripts, dependencies and permissions before staging or release.
+5. Review the outcome of the [manual, isolated web compilation experiment](.github/workflows/goreecloud-web-build.yml); expand CI beyond the [static source integrity checks](.github/workflows/goreecloud-source-checks.yml) only with documented dependency and security acceptance.
 
 See [release gates](docs/GOREECLOUD-RELEASE-GATES.md), the [supply-chain preflight](docs/GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md), [GoreeCloud contribution guidance](CONTRIBUTING.md) and the [official web icon asset record](docs/GOREECLOUD-BRAND-ADOPTION.md). Original Immich instructions are at [docs.immich.app](https://docs.immich.app/) and are not validated GoreeCloud installation instructions.

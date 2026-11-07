@@ -40,6 +40,7 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 ## Gate 3 — Functional and recovery acceptance (open)
 
 - [ ] Build web/server/mobile and service images in a disposable, dependency-reviewed environment.
+- [ ] Owner-triggered [isolated web compilation workflow](../.github/workflows/goreecloud-web-build.yml) succeeds with pinned Node 24/pnpm 12, ignored install lifecycle scripts, read-only GitHub token and no private media. This is an experimental compile gate, not a deployment test.
 - [ ] Test import, upload, metadata, albums, search, sharing, auth and media operations with synthetic images/videos only.
 - [ ] Verify persistence, encrypted transport, storage isolation, backup, restore, migrations, upgrade and rollback.
 - [ ] Observe resource use, health monitoring and failure behavior; establish reproducible accepted install.
