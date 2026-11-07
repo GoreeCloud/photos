@@ -40,7 +40,8 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 ## Gate 3 — Functional and recovery acceptance (open)
 
 - [ ] Build web/server/mobile and service images in a disposable, dependency-reviewed environment.
-- [ ] Owner-triggered [isolated web compilation workflow](../.github/workflows/goreecloud-web-build.yml) succeeds with pinned Node 24/pnpm 12, ignored install lifecycle scripts, read-only GitHub token and no private media. This is an experimental compile gate, not a deployment test.
+- [x] [Manual isolated build #42416035395](https://github.com/GoreeCloud/photos/actions/runs/42416035395) **passed** pinned Node/pnpm setup, no-lifecycle-script dependency install, explicit local SDK TypeScript compilation, inherited SvelteKit/Vite web compilation, and first-party PWA/asset byte validation. This is a source-build acceptance only, not a production, browser-UX or application-service test.
+- [ ] Run the subsequent loopback-only HTTP static-delivery contract (HTML shell, JSON manifest, five official assets, GET/HEAD) in an isolated runner. This is not browser JS interaction or an application backend test.
 - [ ] Test import, upload, metadata, albums, search, sharing, auth and media operations with synthetic images/videos only.
 - [ ] Verify persistence, encrypted transport, storage isolation, backup, restore, migrations, upgrade and rollback.
 - [ ] Observe resource use, health monitoring and failure behavior; establish reproducible accepted install.
@@ -61,3 +62,9 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 - Failure: Rolldown could not resolve @immich/sdk from web/src/lib/queries/server-info.query.ts. The imported packages/sdk/package.json declares build/index.js as its module entry and a TypeScript tsc build script.
 - Remediation: explicitly compile the @immich/sdk workspace using its existing TypeScript build script in the disposable runner **before** attempting the web build, without allowing package-install lifecycle scripts.
 - This first failure remains recorded; web compilation is not accepted until a successful isolated rerun including PWA artifact verification. Deployment, security, runtime and data handling gates stay open.
+
+### Isolated web build recovery evidence — November 7, 2026
+
+- [PR #4](https://github.com/GoreeCloud/photos/pull/4) merged the deliberate SDK-first build prerequisite to [main 95a5652](https://github.com/GoreeCloud/photos/commit/95a565262507bd700c82a64dcfff1ff1af665916). PR and post-merge static CI passed.
+- The [second manual web build #42416035395](https://github.com/GoreeCloud/photos/actions/runs/42416035395) **PASSED**: TypeScript SDK, full SvelteKit/Vite web source compilation, and generated PWA manifest and official icon integrity. No secrets, real photos, app server or deployment were used.
+- This accepts **only** a disposable browser-source compilation and generated static artifacts; actual interactive web behavior, API/backend, security/privacy, media workflows, cross-platform devices and recovery remain unverified.

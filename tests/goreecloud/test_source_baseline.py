@@ -100,6 +100,35 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", workflow)
         self.assertIn("pnpm --filter @immich/sdk run build", workflow)
         self.assertIn("python3 scripts/goreecloud/verify_web_build.py", workflow)
+        self.assertIn("python3 scripts/goreecloud/smoke_web_static_http.py", workflow)
+
+    def test_loopback_http_static_asset_delivery_with_synthetic_page(self) -> None:
+        import contextlib
+        import importlib.util
+        import io
+        import tempfile
+
+        smoke = ROOT / "scripts/goreecloud/smoke_web_static_http.py"
+        source = smoke.read_text(encoding="utf-8")
+        self.assertIn('("127.0.0.1", 0)', source)
+        self.assertIn('urllib.request.ProxyHandler({})', source)
+        spec = importlib.util.spec_from_file_location("goreecloud_photos_http_smoke", smoke)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory(prefix="goreecloud-static-http-") as root:
+            out = Path(root)
+            (out / "index.html").write_text("<!doctype html><html><body>synthetic shell</body></html>")
+            (out / "manifest.json").write_bytes((WEB / "manifest.json").read_bytes())
+            for name in ("icon.svg", "favicon.ico", "goreecloud-photos-192.png",
+                         "goreecloud-photos-512.png", "apple-icon-180.png"):
+                (out / name).write_bytes((WEB / name).read_bytes())
+            mod.OUTPUT = out
+            captured = io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                mod.main()
+            self.assertIn("PASS: loopback-only HTTP", captured.getvalue())
 
     def test_deployment_env_contains_only_secret_manager_references(self) -> None:
         # Prevent accidental future substitution of literal credentials into this
