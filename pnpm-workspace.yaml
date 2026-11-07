@@ -36,6 +36,8 @@ overrides:
   tsc-alias: 1.9.9
   # Reviewed v3 security patch baseline; see docs/GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md
   fast-uri: 3.1.9
+  # Docusaurus/Mermaid HTML sanitizer patch for GHSA-cg2g-xh64-v4q7
+  dompurify: 3.4.17
 packageExtensions:
   nestjs-kysely:
     dependencies:

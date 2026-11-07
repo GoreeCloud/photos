@@ -79,7 +79,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
@@ -99,6 +99,27 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertFalse((ROOT / ".github/ISSUE_TEMPLATE/bug_report.yaml").exists())
         self.assertIn("# Contributing to GoreeCloud Photos", (ROOT / "CONTRIBUTING.md").read_text())
         self.assertTrue((ROOT / "docs/UPSTREAM-CONTRIBUTING.md").is_file())
+
+    def test_dompurify_patch_and_docs_runner_are_restricted(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  dompurify: 3.4.17\n", workspace)
+        self.assertIn("  dompurify: 3.4.17\n", lock)
+        self.assertIn("  dompurify@3.4.17:\n    resolution:", lock)
+        self.assertNotIn("dompurify@3.4.12", lock)
+        wf = (ROOT / ".github/workflows/goreecloud-docs-build.yml").read_text(encoding="utf-8")
+        self.assertIn("on:\n  workflow_dispatch:", wf)
+        self.assertNotIn("\n  pull_request:", wf)
+        self.assertNotIn("\n  push:", wf)
+        self.assertIn("permissions:\n  contents: read", wf)
+        self.assertIn("actions/checkout@" + CHECKOUT_SHA, wf)
+        self.assertIn("actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020", wf)
+        self.assertIn("persist-credentials: false", wf)
+        self.assertIn("submodules: false", wf)
+        self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", wf)
+        self.assertIn("pnpm --dir docs run build", wf)
+        self.assertNotIn("pnpm deploy", wf)
+        self.assertIn("python3 scripts/goreecloud/verify_docs_build.py", wf)
 
     def test_dependency_advisory_preflight_is_manual_and_read_only(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-dependency-audit.yml").read_text(encoding="utf-8")

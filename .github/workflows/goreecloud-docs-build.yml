@@ -1,0 +1,40 @@
+name: GoreeCloud Photos inherited docs compile (experimental)
+
+# Owner-triggered only; not a deployment or UI acceptance.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-compile:
+    name: Disposable Docusaurus compilation without user media
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: 'true'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out without persisted credentials or submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Prepare pinned Node toolchain
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Prepare pinned pnpm in temporary hosted runner
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.16.1 --activate
+          pnpm --version
+      - name: Install pinned dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
+      - name: Compile inherited Docusaurus docs without publishing
+        run: pnpm --dir docs run build
+      - name: Check generated static docs entry
+        run: python3 scripts/goreecloud/verify_docs_build.py
