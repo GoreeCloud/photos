@@ -46,6 +46,16 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_body_parser_v1_patch_preserves_server_major_v2(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("'body-parser@1': 1.20.9", workspace)
+        self.assertIn("body-parser@1: 1.20.9", lock)
+        self.assertIn("  body-parser@1.20.9:\n    resolution:", lock)
+        self.assertNotIn("body-parser@1.20.6", lock)
+        self.assertIn("  body-parser@2.4.0:\n    resolution:", lock)
+        self.assertIn("      body-parser: 2.4.0(", lock)
+
     def test_joi_17_security_patch_is_lockfile_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
