@@ -78,3 +78,8 @@ A new owner-triggered workflow performs pinned pnpm 12.16.1 audit JSON reporting
 ### Confirmed production-scope advisory inventory — November 7, 2026
 
 [GitHub Actions run #42418292059](https://github.com/GoreeCloud/photos/actions/runs/42418292059) reported 4 critical, 32 high, 28 moderate and 10 low advisory entries in pnpm's production-dependency scope, compared with 5 critical, 40 high, 31 moderate and 13 low across the full workspace. The audit gate deliberately failed. The [detailed dependency triage](GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md) documents inspected source paths and initial remediation ordering, distinguishing documentation tooling from actual web/server dependency reachability. No vulnerabilities were suppressed, automatically fixed or declared non-exploitable.
+
+
+### Targeted fast-uri lockfile update and validation — November 7, 2026
+
+[Photos PR #12](https://github.com/GoreeCloud/photos/pull/12) merged a source-reviewed pin of fast-uri 3.1.9 and its regenerated lockfile after clean [web](https://github.com/GoreeCloud/photos/actions/runs/42419436543), [server](https://github.com/GoreeCloud/photos/actions/runs/42419438716) and [static](https://github.com/GoreeCloud/photos/actions/runs/42419422022) checks. The manual [post-patch audit #42419440996](https://github.com/GoreeCloud/photos/actions/runs/42419440996) reported 5 critical/34 high/28 moderate/11 low entries overall and 4 critical/26 high/25 moderate/8 low in pnpm production scope; **audit still failed as intended**. These are advisory counts, not independently proven exploitability. Other dependency ecosystems and remaining pnpm advisories require further review; no broad Wardveil release clearance.
