@@ -39,6 +39,8 @@ overrides:
   # Documentation dependency advisory fixes: DOMPurify and shell-quote
   dompurify: 3.4.17
   shell-quote: 1.11.0
+  # Docs Docusaurus pool: security fixes GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr
+  tinypool: 2.2.0
 packageExtensions:
   nestjs-kysely:
     dependencies:
