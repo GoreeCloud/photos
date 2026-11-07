@@ -46,6 +46,18 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_brace_expansion_v1_scoped_patch_keeps_other_major_lines(self) -> None:
+        import re
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        pattern = r"(?m)^\s+['\\\"]?brace-expansion@1['\\\"]?: 1\.1\.20\s*$"
+        self.assertRegex(workspace, pattern)
+        self.assertRegex(lock, pattern)
+        self.assertIn("  brace-expansion@1.1.20:\n", lock)
+        self.assertNotIn("brace-expansion@1.1.15", lock)
+        self.assertIn("  brace-expansion@2.1.7:\n", lock)
+        self.assertIn("  brace-expansion@5.0.12:\n", lock)
+
     def test_tinypool_docs_security_patch_is_lockfile_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
