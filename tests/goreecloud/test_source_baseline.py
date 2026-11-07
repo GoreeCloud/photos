@@ -46,6 +46,17 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_fast_uri_security_override_and_lockfile_are_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  fast-uri: 3.1.9\n", workspace)
+        self.assertIn("  fast-uri: 3.1.9\n", lock)
+        self.assertIn("  fast-uri@3.1.9:\n    resolution:", lock)
+        self.assertIn("      fast-uri: 3.1.9\n", lock)
+        self.assertIn("  fast-uri@3.1.9: {}", lock)
+        self.assertNotIn("fast-uri@3.1.4", lock)
+        self.assertNotIn("fast-uri: 3.1.4", lock)
+
     def test_license_and_original_readme_are_unmodified(self) -> None:
         for path, digest in PINNED_FILES.items():
             with self.subTest(path=path):

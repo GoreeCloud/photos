@@ -44,3 +44,10 @@ The fifth full-workspace critical sample, tar (GHSA-23hp-3jrh-7fpw), maps to tar
 5. Expand review beyond pnpm: Python uv, Rust Cargo, Flutter/Dart, containers, native apps, asset/trademark rights and actual deployed service configuration.
 
 **Gate status:** Open and release-blocking. The [release tracker](GOREECLOUD-RELEASE-GATES.md) is authoritative for accepted implementation milestones. A successful audit scan alone would not establish deployed security.
+
+
+## Fast-uri candidate remediation — staged, not yet accepted
+
+The first targeted security patch proposal sets a single pnpm override, fast-uri: 3.1.9, and updates the exact lockfile resolution from 3.1.4 to 3.1.9. This is the existing major-v3 release line; the vendor's BSD-3-Clause license and original attribution remain unchanged. The official [fast-uri repository](https://github.com/fastify/fast-uri) and the [v3.1.4-to-v3.1.9 upstream comparison](https://github.com/fastify/fast-uri/compare/v3.1.4...v3.1.9) were inspected for source, dependency, install-script and security-test changes. Its published package manifest at v3.1.9 has no runtime dependencies or install lifecycle scripts.
+
+The lockfile was regenerated in metadata-only mode with install scripts disabled; the codebase was not run locally. Regression checks assert that the workspace override, resolved package and AJV dependency edge agree and that the old vulnerable 3.1.4 snapshot is absent. **The update is unaccepted pending hosted frozen-lockfile build and advisory rerun on the exact patch head.** Even if accepted, it would remediate only fast-uri-related advisories, not the remaining dependency findings or entire Wardveil security gate.
