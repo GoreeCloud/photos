@@ -29,3 +29,7 @@ vite.config.js.timestamp-*
 *.tsbuildinfo
 *.tsbuildInfo
 misc/release/notes.md
+
+# GoreeCloud validation (generated Python artifacts)
+__pycache__/
+*.py[cod]
