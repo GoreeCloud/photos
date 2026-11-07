@@ -66,3 +66,10 @@ The manually triggered [server compile #42417305584](https://github.com/GoreeClo
 ### Read-only registry advisory triage (not yet executed)
 
 A new owner-triggered workflow performs pinned pnpm 12.16.1 audit JSON reporting against the current lockfile without installing dependencies, running package lifecycle scripts, changing versions or applying fixes. It uses a disposable runner, pinned read-only GitHub Actions and no private media. The parser requires complete nonnegative per-severity counts and fails closed on malformed output or nonzero audit exit codes. Public advisory databases are incomplete by nature, so a green scan is not proof of complete source safety. This scan covers only pnpm packages; Python uv, Flutter/Dart, Rust, container images, Git submodules and licensed assets need separate review. The authenticated GitHub Dependabot-alerts endpoint was not accessible during preflight; do not infer that there are zero alerts.
+
+
+### First lockfile advisory evidence and scoped rerun — November 7, 2026
+
+- [Initial full-workspace pnpm audit #42418045175](https://github.com/GoreeCloud/photos/actions/runs/42418045175) found **5 critical, 40 high, 31 moderate and 13 low advisory entries** among inherited pnpm workspace dependencies. The run deliberately **failed** the audit gate. These are registry advisory counts, not evidence that every entry is exploitable in GoreeCloud Photos; no production application exists.
+- The next bounded owner-triggered revision separately queries all workspace dependencies and pnpm's production-dependency scope. It prints only a small, sanitized critical/high advisory sample (public package, advisory identifier, and published fix range) without echoing advisory prose or installing dependencies. This allows targeted package ownership and affected-version triage before any proposed upgrades.
+- The counts and sample do not establish completeness of public vulnerability databases, applicability of individual advisories, or permission to apply unreviewed automated fixes. Preserve this gate as open until all material findings are assessed and appropriately remediated or explicitly accepted with evidence.

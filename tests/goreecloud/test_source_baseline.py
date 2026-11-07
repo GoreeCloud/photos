@@ -99,6 +99,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         self.assertIn("submodules: false", workflow)
         self.assertIn("pnpm audit --json", workflow)
+        self.assertIn("pnpm audit --prod --json", workflow)
         self.assertNotIn("pnpm install", workflow)
         self.assertNotIn("audit --fix", workflow)
         self.assertIn("report_pnpm_audit.py", workflow)
