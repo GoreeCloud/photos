@@ -59,6 +59,7 @@ def main() -> None:
         files = (
             "icon.svg", "favicon.ico", "goreecloud-photos-192.png",
             "goreecloud-photos-512.png", "apple-icon-180.png",
+            "goreecloud-photos-logo.svg", "goreecloud-photos-logo-dark.svg",
         )
         for name in files:
             data, mime = request(base, "/" + name)
@@ -71,7 +72,7 @@ def main() -> None:
             head_bytes, _ = request(base, "/" + name, method="HEAD")
             if head_bytes:
                 raise AssertionError(f"HEAD unexpectedly has a response body: {name}")
-        print("PASS: loopback-only HTTP GET/HEAD for static HTML, PWA manifest and five branded assets")
+        print(f"PASS: loopback-only HTTP GET/HEAD for static HTML, PWA manifest and {len(files)} branded assets")
     finally:
         server.shutdown()
         server.server_close()

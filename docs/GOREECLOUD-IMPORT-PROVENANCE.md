@@ -44,3 +44,7 @@ For future upstream updates: compare against the pinned source commit, document 
 - Created an explicit [release gate tracker](GOREECLOUD-RELEASE-GATES.md) identifying untested security, runtime, privacy, recovery, mobile and deployment work.
 
 The files are source modifications, not evidence of validated live runtime behavior. No automated dependency installation, Immich source tests, deployments or processing of personal images were undertaken in this hardening stage.
+
+## Targeted web source identity update — November 7, 2026
+
+Official GoreeCloud Photos central brand wordmarks were verified by Git blob SHA, copied unchanged, and referenced via a reusable light/dark or icon Svelte component. Auth, navigation, onboarding, error, shared-link password-header and document title source markup were updated. The shared SDK, inherited version/about disclosures, storage contracts and service IDs were not globally renamed. This source-level brand step is not full runtime UI/visual acceptance and does not establish new deployment behavior.

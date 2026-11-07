@@ -3,7 +3,7 @@
   import { createPreloadedQuery } from '#lib/queries/client.ts';
   import { getServerConfigQuery } from '#lib/queries/server-info.query.ts';
   import { OnboardingRole } from '#lib/types.ts';
-  import { Logo } from '@immich/ui';
+  import GoreeCloudPhotosLogo from '#lib/components/shared-components/GoreeCloudPhotosLogo.svelte';
   import { t } from 'svelte-i18n';
 
   const query = createPreloadedQuery(getServerConfigQuery);
@@ -15,7 +15,7 @@
 </script>
 
 <div class="gap-4">
-  <Logo variant="icon" size="giant" class="mb-2" />
+  <GoreeCloudPhotosLogo variant="icon" class="mb-2 size-28" />
   <p class="mb-6 text-6xl font-medium text-primary">
     {$t('onboarding_welcome_user', { values: { user: authManager.user.name } })}
   </p>

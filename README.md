@@ -4,7 +4,7 @@
 
 > **Development source baseline only. Not deployed or production-ready.**
 >
-> This is an attributed Immich derivative, not an independently authored replacement or an official Immich product. The initial rebrand covers repository identity, verified first-party web/PWA icons, display metadata and a browser fallback message; the application is NOT yet fully rebranded, integrated, tested or security-accepted.
+> This is an attributed Immich derivative, not an independently authored replacement or an official Immich product. The initial rebrand covers repository identity, verified first-party web/PWA icons and wordmarks, primary browser logo surfaces, display metadata and a browser fallback message; the application is NOT yet fully rebranded, integrated, tested or security-accepted.
 
 ## Purpose
 

@@ -22,6 +22,7 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 
 - [x] Central GoreeCloud Photos app icon adopted into web favicon, SVG icon and PWA icons; 180px Apple icon derived from an approved raster.
 - [x] Web/PWA display name uses GoreeCloud Photos.
+- [x] Adopt verified central light/dark wordmarks in a shared web component and replace five primary UI logo surfaces plus the browser title at source level; builds and rendering on this exact source remain pending.
 - [ ] Replace remaining inherited product logos and brand-specific copy in app web surfaces without altering compatibility contracts.
 - [ ] Adopt the current GoreeCloud UI token semantics, components and theme behavior after inspecting concrete consumer integration points.
 - [ ] Verify affected pages, empty/error/loading states and responsive layouts through actual browser rendering.

@@ -25,3 +25,16 @@ The PWA manifest points at the 192px/512px first-party icons. Its icon purpose i
 ## Acceptance boundary
 
 The GitHub source and local checks verify files and metadata only. Real favicon appearance, platform installation banners, browser caching, responsive layouts, alternative themes, accessibility and native mobile app icons require separate runtime testing. Do not claim full GoreeCloud UI adoption or external client delivery from this stage.
+
+## Official wordmarks and primary web presentation adoption
+
+The central brand library supplied both **unaltered** official Photos wordmarks. Both files were verified against live GitHub blob identities before use:
+
+| Web path | Central source / Git blob | SHA-256 |
+| --- | --- | --- |
+| web/static/goreecloud-photos-logo.svg | products/photos/logo.svg / 88091928819ba91539240fc024d3d0dc54eab1fb | 5955b3f5653f48302d18b1ffbd173b2adce1211d531b7f81da892f6e5bf2d6e0 |
+| web/static/goreecloud-photos-logo-dark.svg | products/photos/logo-dark.svg / 9195bb3dfcdd545c8beae0e9a8d8d61452a07b5f | f549bcb33ae0962bafa0d1e7e7bab635e42a54835e46999daff0bf97467be302 |
+
+A reusable source component selects the canonical icon or light/dark wordmark using CSS dark theme classes and includes accessible alternative text. Targeted web source surfaces include primary navigation, authentication, onboarding, error screens, password-protected shared-link header and the browser document title. Core imported APIs and package identifiers are unchanged.
+
+**Acceptance boundary:** Source-level branded component replacement is not a rendered UI/visual/accessibility check. The isolated SvelteKit/Vite build and loopback static HTTP checks must be rerun on the updated source, and actual browsers/themes/viewport sizes require separate visual acceptance.

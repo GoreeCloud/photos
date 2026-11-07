@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Card, CardBody, CardHeader, Heading, Logo, VStack, immichLogo } from '@immich/ui';
+  import GoreeCloudPhotosLogo from '#lib/components/shared-components/GoreeCloudPhotosLogo.svelte';
+  import { Card, CardBody, CardHeader, Heading, VStack } from '@immich/ui';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -16,9 +17,9 @@
   {#if withBackdrop}
     <div class="absolute -z-10 flex size-full place-content-center place-items-center">
       <img
-        src={immichLogo}
+        src="/icon.svg"
         class="mx-auto mb-2 h-full max-w-(--breakpoint-md) overflow-hidden antialiased"
-        alt="Immich logo"
+        alt=""
       />
       <div
         class="absolute inset-s-0 top-0 h-[99%] w-full bg-transparent backdrop-blur-[200px] dark:bg-immich-dark-bg/20"
@@ -30,7 +31,7 @@
     {#if withHeader}
       <CardHeader class="mt-6">
         <VStack>
-          <Logo variant="icon" size="giant" />
+          <GoreeCloudPhotosLogo variant="icon" class="size-28" />
           <Heading size="large" class="font-semibold" color="primary" tag="h1">{title}</Heading>
         </VStack>
       </CardHeader>
