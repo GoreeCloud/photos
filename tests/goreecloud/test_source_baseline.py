@@ -46,6 +46,16 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_tinypool_docs_security_patch_is_lockfile_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  tinypool: 2.2.0\n", workspace)
+        self.assertIn("  tinypool: 2.2.0\n", lock)
+        self.assertIn("  tinypool@2.2.0:\n", lock)
+        self.assertIn("  tinypool@2.2.0: {}", lock)
+        self.assertNotIn("tinypool@1.1.1", lock)
+        self.assertNotIn("tinypool: 1.1.1", lock)
+
     def test_docs_leaf_security_overrides_are_lockfile_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
