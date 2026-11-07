@@ -40,3 +40,5 @@ jobs:
         run: pnpm --dir web run build
       - name: Verify generated static public branding artifacts
         run: python3 scripts/goreecloud/verify_web_build.py
+      - name: Smoke test static web assets over local-only HTTP
+        run: python3 scripts/goreecloud/smoke_web_static_http.py
