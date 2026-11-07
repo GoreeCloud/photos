@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -31,9 +32,37 @@ def parse_counts(report: object) -> dict[str, int]:
     return counts
 
 
+
+def advisory_examples(report: object, limit: int = 12) -> list[tuple[str, str, str, str]]:
+    if not isinstance(report, dict):
+        return []
+    raw = report.get("advisories", {})
+    if isinstance(raw, dict):
+        entries = raw.values()
+    elif isinstance(raw, list):
+        entries = raw
+    else:
+        return []
+    out: list[tuple[str, str, str, str]] = []
+    def safe(value: object) -> str:
+        if not isinstance(value, (str, int)):
+            return "unspecified"
+        return re.sub(r"[^A-Za-z0-9@/_.+<>~=* -]", "_", str(value))[:90]
+    for item in entries:
+        if not isinstance(item, dict) or item.get("severity") not in ("critical", "high"):
+            continue
+        out.append((
+            safe(item.get("severity")),
+            safe(item.get("module_name") or item.get("name")),
+            safe(item.get("github_advisory_id") or item.get("id")),
+            safe(item.get("patched_versions")),
+        ))
+    out.sort(key=lambda row: (0 if row[0] == "critical" else 1, row[1], row[2]))
+    return out[:limit]
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        print("usage: report_pnpm_audit.py REPORT_JSON AUDIT_EXIT_CODE", file=sys.stderr)
+    if len(argv) != 4 or argv[3] not in ("full", "production"):
+        print("usage: report_pnpm_audit.py REPORT_JSON AUDIT_EXIT_CODE SCOPE", file=sys.stderr)
         return 2
     path = Path(argv[1])
     try:
@@ -45,9 +74,14 @@ def main(argv: list[str]) -> int:
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
         print(f"UNVERIFIED: pnpm audit output cannot be accepted: {type(exc).__name__}", file=sys.stderr)
         return 2
-    print("pnpm advisory counts (all workspaces; includes dev dependencies):")
+    print(f"pnpm advisory counts ({argv[3]} dependency scope):")
     for name in SEVERITIES:
         print(f"  {name}: {counts[name]}")
+    examples = advisory_examples(report)
+    if examples:
+        print("Critical/high advisory samples (package, GHSA/id, patched range; not exhaustive):")
+        for severity, package, advisory_id, patch in examples:
+            print(f"  {severity}: {package}, {advisory_id}, patch={patch}")
     if code != 0:
         print(f"AUDIT NOT CLEAR: pnpm exited nonzero ({code}). Findings or service errors require triage.")
         return 1

@@ -2,7 +2,7 @@
 
 import unittest
 
-from scripts.goreecloud.report_pnpm_audit import parse_counts
+from scripts.goreecloud.report_pnpm_audit import advisory_examples, parse_counts
 
 
 class AuditParseTests(unittest.TestCase):
@@ -19,6 +19,17 @@ class AuditParseTests(unittest.TestCase):
             "total": 7,
         }}})
         self.assertEqual(counts["critical"] + counts["high"], 4)
+
+    def test_advisory_samples_are_bounded_and_sanitized(self) -> None:
+        reports = {"advisories": {
+            "a": {"severity": "critical", "module_name": "image-parser", "github_advisory_id": "GHSA-1111-2222-3333", "patched_versions": ">=2"},
+            "b": {"severity": "high", "module_name": "foo\\nINJECT", "id": 123, "patched_versions": "<2"},
+            "c": {"severity": "moderate", "module_name": "bar"},
+        }}
+        rows = advisory_examples(reports, limit=2)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0][0], "critical")
+        self.assertNotIn("\\n", rows[1][1])
 
     def test_incomplete_metadata_fails_closed(self) -> None:
         for report in ({}, [], {"metadata": {"vulnerabilities": {"high": 0}}}):

@@ -35,7 +35,13 @@ jobs:
         shell: bash
         run: |
           set +e
-          pnpm audit --json > "$RUNNER_TEMP/photos-pnpm-audit.json"
-          audit_exit=$?
+          pnpm audit --json > "$RUNNER_TEMP/photos-pnpm-audit-all.json"
+          all_exit=$?
+          pnpm audit --prod --json > "$RUNNER_TEMP/photos-pnpm-audit-production.json"
+          prod_exit=$?
+          python3 scripts/goreecloud/report_pnpm_audit.py "$RUNNER_TEMP/photos-pnpm-audit-all.json" "$all_exit" full
+          all_report=$?
+          python3 scripts/goreecloud/report_pnpm_audit.py "$RUNNER_TEMP/photos-pnpm-audit-production.json" "$prod_exit" production
+          prod_report=$?
           set -e
-          python3 scripts/goreecloud/report_pnpm_audit.py "$RUNNER_TEMP/photos-pnpm-audit.json" "$audit_exit"
+          test "$all_report" -eq 0 && test "$prod_report" -eq 0
