@@ -36,6 +36,9 @@ overrides:
   tsc-alias: 1.9.9
   # Reviewed v3 security patch baseline; see docs/GOREECLOUD-DEPENDENCY-TRIAGE-2026-11-07.md
   fast-uri: 3.1.9
+  # Documentation dependency advisory fixes: DOMPurify and shell-quote
+  dompurify: 3.4.17
+  shell-quote: 1.11.0
 packageExtensions:
   nestjs-kysely:
     dependencies:
