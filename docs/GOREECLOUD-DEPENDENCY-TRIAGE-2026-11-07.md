@@ -61,10 +61,17 @@ The lockfile was regenerated in metadata-only mode with install scripts disabled
 - **Next targeted risk:** Review documentation-chain dompurify / shell-quote / tinypool critical findings and other web/server high-priority paths; inspect patched release source and compatibility before further changes. The entire dependency and operational security gate stays **OPEN**.
 
 
-## Documentation-chain patch candidate — not yet accepted
+## Documentation-chain leaf patch — build accepted, security gate still open
 
 The next targeted candidate pins DOMPurify 3.4.17 (from 3.4.12) and shell-quote 1.11.0 (from 1.10.0), both through one pnpm workspace override per package. This addresses critical advisory families reported through the inherited docs/Docusaurus chain; it is not a production Photos service claim.
 
 Source/license preflight: DOMPurify upstream 3.4.17 retains the dual MPL-2.0/Apache-2.0 license, with a materially changed source and build pipeline since 3.4.12, including additional regression cases. shell-quote 1.11.0 retains MIT and its package scripts and minimum Node engine requirement; upstream changes include shell token escaping and parse handling security fixes. Both version tags and source diffs were reviewed. Current public dependencies and notice obligations remain in scope.
 
 The change must pass a frozen-lockfile isolated *documentation-site compilation* (because that is where the vulnerable dependency versions are reached) alongside isolated web/server builds and pnpm advisory count reconciliation. The docs output is inherited Immich documentation, with upstream links and branding, **not approved for deployment** as GoreeCloud documentation. No source install/lifecycle script, runtime app, personal media or deployment is authorized by this test.
+
+
+### DOMPurify and shell-quote accepted source/build evidence — November 7, 2026
+
+- [PR #14](https://github.com/GoreeCloud/photos/pull/14) merged dompurify 3.4.17 and shell-quote 1.11.0 as narrow pinned versions on [main a071065](https://github.com/GoreeCloud/photos/commit/a071065d577fa8701fcaacf7b2f445bbf0fdce58). Official package licenses and notices remain applicable.
+- The exact patch-head [web compile and HTTP smoke #42420066911](https://github.com/GoreeCloud/photos/actions/runs/42420066911) and [Nest server compilation #42420069123](https://github.com/GoreeCloud/photos/actions/runs/42420069123) passed. The new [post-merge docs compilation #42420206414](https://github.com/GoreeCloud/photos/actions/runs/42420206414) also passed; docs were not published.
+- [Remaining pnpm audit findings #42420071308](https://github.com/GoreeCloud/photos/actions/runs/42420071308): full workspace 3 critical/33 high/27 moderate/9 low, pnpm production scope 2 critical/25 high/24 moderate/6 low. The audit still **failed** correctly. The two remaining production-scope critical advisories are tinypool 1.1.1 via the docs/Docusaurus chain. New dependency remediation is required; the entire Wardveil security gate is **not accepted**.
