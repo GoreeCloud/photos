@@ -1,0 +1,127 @@
+<script lang="ts">
+  import ActionMenuItem from '#lib/components/ActionMenuItem.svelte';
+  import UserPageLayout, { headerId } from '#lib/components/layouts/UserPageLayout.svelte';
+  import ButtonContextMenu from '#lib/components/shared-components/context-menu/ButtonContextMenu.svelte';
+  import TreeBreadcrumbs from '#lib/components/shared-components/tree/TreeBreadcrumbs.svelte';
+  import TreeItemThumbnails from '#lib/components/shared-components/tree/TreeItemThumbnails.svelte';
+  import TreeItems from '#lib/components/shared-components/tree/TreeItems.svelte';
+  import Sidebar from '#lib/components/sidebar/Sidebar.svelte';
+  import AssetSelectControlBar from '#lib/components/timeline/AssetSelectControlBar.svelte';
+  import Timeline from '#lib/components/timeline/Timeline.svelte';
+  import ChangeDate from '#lib/components/timeline/actions/ChangeDateAction.svelte';
+  import ChangeDescription from '#lib/components/timeline/actions/ChangeDescriptionAction.svelte';
+  import ChangeLocation from '#lib/components/timeline/actions/ChangeLocationAction.svelte';
+  import DeleteAssets from '#lib/components/timeline/actions/DeleteAssetsAction.svelte';
+  import DownloadAction from '#lib/components/timeline/actions/DownloadAction.svelte';
+  import FavoriteAction from '#lib/components/timeline/actions/FavoriteAction.svelte';
+  import SelectAllAssets from '#lib/components/timeline/actions/SelectAllAction.svelte';
+  import SetVisibilityAction from '#lib/components/timeline/actions/SetVisibilityAction.svelte';
+  import { AssetAction } from '#lib/constants.ts';
+  import SkipLink from '#lib/elements/SkipLink.svelte';
+  import { assetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
+  import { TimelineManager } from '#lib/managers/timeline-manager/timeline-manager.svelte.ts';
+  import { createPreloadedQuery } from '#lib/queries/client.ts';
+  import { getAllTagsQuery } from '#lib/queries/tag.query.ts';
+  import { Route } from '#lib/route.ts';
+  import { getAssetBulkActions } from '#lib/services/asset.service.ts';
+  import { getTagActions } from '#lib/services/tag.service.ts';
+  import { TreeNode, joinPaths } from '#lib/utils/tree-utils.ts';
+  import { ActionButton, CommandPaletteDefaultProvider, Text } from '@immich/ui';
+  import { mdiDotsVertical, mdiTag, mdiTagMultiple } from '@mdi/js';
+  import { t } from 'svelte-i18n';
+  import { goto } from '$app/navigation';
+  import type { PageData } from './$types';
+
+  interface Props {
+    data: PageData;
+  }
+
+  let { data }: Props = $props();
+
+  const query = createPreloadedQuery(getAllTagsQuery);
+  const tree = $derived(TreeNode.fromTags(query.data));
+  const tag = $derived(tree.traverse(data.path));
+
+  let timelineManager = $state<TimelineManager>() as TimelineManager;
+  const options = $derived({ deferInit: !tag, tagId: tag?.id });
+
+  const handleNavigation = (child: string) => navigateToView(joinPaths(tag.path, child));
+
+  const getLink = (path: string) => Route.tags({ path });
+
+  const navigateToView = (path: string) => goto(getLink(path));
+
+  const handleSetVisibility = (assetIds: string[]) => {
+    timelineManager.removeAssets(assetIds);
+    assetMultiSelectManager.clear();
+  };
+
+  const { Create, Update, Delete } = $derived(getTagActions($t, tag));
+</script>
+
+<UserPageLayout title={data.meta.title} actions={[Create, Update, Delete]}>
+  {#snippet sidebar()}
+    <Sidebar>
+      <SkipLink target={`#${headerId}`} text={$t('skip_to_tags')} breakpoint="md" />
+      <section>
+        <Text class="mb-4 ps-4" size="small">{$t('explorer')}</Text>
+        <div class="h-full">
+          <TreeItems icons={{ default: mdiTag, active: mdiTag }} {tree} active={tag.path} {getLink} />
+        </div>
+      </section>
+    </Sidebar>
+  {/snippet}
+
+  <TreeBreadcrumbs node={tag} icon={mdiTagMultiple} title={$t('tags')} {getLink} />
+
+  <section class="mt-2 h-[calc(100%-(--spacing(20)))] immich-scrollbar overflow-auto">
+    {#if tag.hasAssets}
+      <Timeline
+        enableRouting={true}
+        bind:timelineManager
+        {options}
+        assetInteraction={assetMultiSelectManager}
+        removeAction={AssetAction.UNARCHIVE}
+      >
+        {#snippet empty()}
+          <TreeItemThumbnails items={tag.children} icon={mdiTag} onClick={handleNavigation} />
+        {/snippet}
+      </Timeline>
+    {:else}
+      <TreeItemThumbnails items={tag.children} icon={mdiTag} onClick={handleNavigation} />
+    {/if}
+  </section>
+</UserPageLayout>
+
+<section>
+  {#if assetMultiSelectManager.selectionActive}
+    <div class="fixed inset-s-0 top-0 w-full">
+      <AssetSelectControlBar>
+        {const Actions = $derived(getAssetBulkActions($t))}
+        <CommandPaletteDefaultProvider name={$t('assets')} actions={Object.values(Actions)} />
+        <ActionButton action={Actions.CreateSharedLink} />
+        <SelectAllAssets {timelineManager} assetInteraction={assetMultiSelectManager} />
+        <ActionButton action={Actions.AddToAlbum} />
+        <FavoriteAction
+          removeFavorite={assetMultiSelectManager.isAllFavorite}
+          onFavorite={(ids, isFavorite) => timelineManager.update(ids, (asset) => (asset.isFavorite = isFavorite))}
+        ></FavoriteAction>
+        <ButtonContextMenu icon={mdiDotsVertical} title={$t('menu')}>
+          <DownloadAction menuItem />
+          <ChangeDate menuItem />
+          <ChangeDescription menuItem />
+          <ChangeLocation menuItem />
+          <ActionMenuItem action={Actions.Archive} />
+          <ActionMenuItem action={Actions.Unarchive} />
+          <ActionMenuItem action={Actions.Tag} />
+          <DeleteAssets
+            menuItem
+            onAssetDelete={(assetIds) => timelineManager.removeAssets(assetIds)}
+            onUndoDelete={(assets) => timelineManager.upsertAssets(assets)}
+          />
+          <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
+        </ButtonContextMenu>
+      </AssetSelectControlBar>
+    </div>
+  {/if}
+</section>
