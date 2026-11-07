@@ -1,0 +1,41 @@
+name: GoreeCloud Photos dependency advisories (experimental)
+
+# Opt-in, registry-network metadata check only. Does not build or install app.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pnpm-advisories:
+    name: Read-only lockfile advisory inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Checkout without saved credentials or submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Set up pinned Node toolchain
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Set up pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.16.1 --activate
+      - name: Inspect lockfile advisories without installing packages
+        shell: bash
+        run: |
+          set +e
+          pnpm audit --json > "$RUNNER_TEMP/photos-pnpm-audit.json"
+          audit_exit=$?
+          set -e
+          python3 scripts/goreecloud/report_pnpm_audit.py "$RUNNER_TEMP/photos-pnpm-audit.json" "$audit_exit"

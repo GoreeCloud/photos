@@ -68,7 +68,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
@@ -88,6 +88,20 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertFalse((ROOT / ".github/ISSUE_TEMPLATE/bug_report.yaml").exists())
         self.assertIn("# Contributing to GoreeCloud Photos", (ROOT / "CONTRIBUTING.md").read_text())
         self.assertTrue((ROOT / "docs/UPSTREAM-CONTRIBUTING.md").is_file())
+
+    def test_dependency_advisory_preflight_is_manual_and_read_only(self) -> None:
+        workflow = (ROOT / ".github/workflows/goreecloud-dependency-audit.yml").read_text(encoding="utf-8")
+        self.assertIn("on:\n  workflow_dispatch:", workflow)
+        self.assertNotIn("\n  pull_request:", workflow)
+        self.assertNotIn("\n  push:", workflow)
+        self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("actions/checkout@" + CHECKOUT_SHA, workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("submodules: false", workflow)
+        self.assertIn("pnpm audit --json", workflow)
+        self.assertNotIn("pnpm install", workflow)
+        self.assertNotIn("audit --fix", workflow)
+        self.assertIn("report_pnpm_audit.py", workflow)
 
     def test_isolated_server_build_is_manual_and_least_privilege(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-server-build.yml").read_text(encoding="utf-8")
