@@ -98,6 +98,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         self.assertIn("submodules: false", workflow)
         self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", workflow)
+        self.assertIn("pnpm --filter @immich/sdk run build", workflow)
         self.assertIn("python3 scripts/goreecloud/verify_web_build.py", workflow)
 
     def test_deployment_env_contains_only_secret_manager_references(self) -> None:

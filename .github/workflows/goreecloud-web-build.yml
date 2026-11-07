@@ -34,6 +34,8 @@ jobs:
           pnpm --version
       - name: Install lockfile dependencies without package lifecycle scripts
         run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
+      - name: Compile local typed Immich SDK workspace package
+        run: pnpm --filter @immich/sdk run build
       - name: Compile inherited web app only (no server, personal assets or deployment)
         run: pnpm --dir web run build
       - name: Verify generated static public branding artifacts

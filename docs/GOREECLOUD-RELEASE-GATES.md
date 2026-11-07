@@ -54,3 +54,10 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 - [ ] Verified staging acceptance and explicit founder-controlled release/deployment decision.
 
 **Release rule:** Only demonstrated checks may be marked complete. No live installation, data migration, private-media test, production release or continuous unattended operation is currently claimed.
+
+### Initial web build evidence — November 7, 2026
+
+- [Manual GitHub Actions run #42415821050](https://github.com/GoreeCloud/photos/actions/runs/42415821050) **failed during Vite compilation**, after successful checkout, pinned pnpm setup and lockfile installation with lifecycle scripts disabled.
+- Failure: Rolldown could not resolve @immich/sdk from web/src/lib/queries/server-info.query.ts. The imported packages/sdk/package.json declares build/index.js as its module entry and a TypeScript tsc build script.
+- Remediation: explicitly compile the @immich/sdk workspace using its existing TypeScript build script in the disposable runner **before** attempting the web build, without allowing package-install lifecycle scripts.
+- This first failure remains recorded; web compilation is not accepted until a successful isolated rerun including PWA artifact verification. Deployment, security, runtime and data handling gates stay open.
