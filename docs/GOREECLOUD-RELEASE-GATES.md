@@ -43,6 +43,7 @@ See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) fo
 - [ ] Build web/server/mobile and service images in a disposable, dependency-reviewed environment.
 - [x] [Manual isolated build #42416035395](https://github.com/GoreeCloud/photos/actions/runs/42416035395) **passed** pinned Node/pnpm setup, no-lifecycle-script dependency install, explicit local SDK TypeScript compilation, inherited SvelteKit/Vite web compilation, and first-party PWA/asset byte validation. This is a source-build acceptance only, not a production, browser-UX or application-service test.
 - [ ] Run the subsequent loopback-only HTTP static-delivery contract (HTML shell, JSON manifest, five official assets, GET/HEAD) in an isolated runner. This is not browser JS interaction or an application backend test.
+- [ ] A manually dispatched, isolated [server compilation check](../.github/workflows/goreecloud-server-build.yml) proves that the inherited SDK, plugin SDK and Nest server can compile without database, real photos, service startup or package-install lifecycle scripts. This is a build-only evidence gate, still pending.
 - [ ] Test import, upload, metadata, albums, search, sharing, auth and media operations with synthetic images/videos only.
 - [ ] Verify persistence, encrypted transport, storage isolation, backup, restore, migrations, upgrade and rollback.
 - [ ] Observe resource use, health monitoring and failure behavior; establish reproducible accepted install.

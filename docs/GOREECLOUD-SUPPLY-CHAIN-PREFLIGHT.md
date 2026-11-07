@@ -51,3 +51,8 @@ The initial manual experiment failed at Vite/Rolldown module resolution for @imm
 ### Isolated build recovered; static HTTP check pending
 
 After the SDK-first correction in Photos PR #4, owner-triggered GitHub Actions run #42416035395 succeeded in the sandboxed dependency install, SDK compile, web compile and generated PWA/brand-file validation. A separate read-only loopback HTTP script now tests serving the compiled static shell, manifest and official images from Python's standard library; this is a bounded asset delivery check, not a real browser/UI/API/backend test or deployment. Remaining dependency provenance, vulnerability and privacy gates remain open.
+
+
+### Independent server compile experiment — pending
+
+A new owner-dispatched-only server compile workflow isolates pnpm lockfile installation (with lifecycle scripts disabled), local SDK TypeScript compilation, plugin SDK bundling and declaration generation, and inherited Nest server build in a disposable Ubuntu runner. The Nest build is compilation only. Source-review scope: plugin SDK esbuild.js bundles two local TypeScript source entrypoints into dist without explicit network or subprocess calls; plugin package build also runs TypeScript and local import-alias rewriting. The package manager and toolchain dependencies remain third-party inputs without full security acceptance. The workflow must not use production secrets, access personal photos, run a database or serve the application. Compiled outputs are statically inspected but not evaluated or launched. No claim of successful build until GitHub hosted run succeeds.
