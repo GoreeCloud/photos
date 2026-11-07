@@ -11,7 +11,7 @@
 - [x] Upstream Renovate configuration and GitHub issue/discussion/release/review routing archived to prevent accidental adoption.
 - [x] Privacy-preserving GitHub commit identity, no personal media committed as part of this development work.
 - [x] Local read-only Python integrity suite checks pinned license/README, upstream provenance, workflow quarantine, branding and gitlink.
-- [ ] GitHub-hosted source integrity CI is green on the adopted branch.
+- [x] [PR #1 source integrity CI](https://github.com/GoreeCloud/photos/actions/runs/42414650696) and [post-merge main CI](https://github.com/GoreeCloud/photos/actions/runs/42414719402) passed on November 7, 2026 for main commit [45860140](https://github.com/GoreeCloud/photos/commit/45860140fcdb6b6071495e5cdb86caa46130332d). This accepts only the narrowly scoped static checks.
 - [ ] Dependency license, vulnerability, provenance, third-party asset, executable script and secrets review is accepted.
 
 See the [static supply-chain preflight](GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md) for inspected dependency and automation surfaces.
