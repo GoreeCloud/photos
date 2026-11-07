@@ -45,6 +45,8 @@ overrides:
   'brace-expansion@1': 1.1.20
   # Upstream 1.16.2 fixes request header/redirect handling advisories without major upgrade
   follow-redirects: 1.16.2
+  # Joi 17.x patched messages/prototype and validation security advisories
+  joi: 17.13.9
 packageExtensions:
   nestjs-kysely:
     dependencies:

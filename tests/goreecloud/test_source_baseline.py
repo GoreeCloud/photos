@@ -46,6 +46,17 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_joi_17_security_patch_is_lockfile_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  joi: 17.13.9\n", workspace)
+        self.assertIn("  joi: 17.13.9\n", lock)
+        self.assertIn("  joi@17.13.9:\n    resolution:", lock)
+        self.assertIn("  joi@17.13.9:\n    dependencies:", lock)
+        self.assertNotIn("joi@17.13.4", lock)
+        self.assertNotIn("joi: 17.13.4", lock)
+        self.assertIn("  follow-redirects@1.16.2:\n", lock)
+
     def test_follow_redirects_security_patch_is_lockfile_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
