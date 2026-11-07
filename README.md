@@ -4,7 +4,7 @@
 
 > **Development source baseline only. Not deployed or production-ready.**
 >
-> This is an attributed Immich derivative, not an independently authored replacement or an official Immich product. The initial rebrand covers repository identity, browser/PWA display metadata and a browser fallback message; the application is NOT yet fully rebranded, integrated, tested or security-accepted.
+> This is an attributed Immich derivative, not an independently authored replacement or an official Immich product. The initial rebrand covers repository identity, verified first-party web/PWA icons, display metadata and a browser fallback message; the application is NOT yet fully rebranded, integrated, tested or security-accepted.
 
 ## Purpose
 
@@ -29,14 +29,14 @@ The original [LICENSE](LICENSE) is preserved. This derivative retains the GNU Af
 
 **Do not deploy or connect real photo libraries from this raw import.** Dependencies, startup scripts, workflows, permissions, storage, backup, migration, authentication and data retention have not passed independent review.
 
-All 27 imported GitHub Actions workflows were moved to [docs/upstream-github-workflows](docs/upstream-github-workflows) to prevent unreviewed automatic execution. The upstream root CODEOWNERS file is retained at [docs/UPSTREAM-CODEOWNERS](docs/UPSTREAM-CODEOWNERS). No upstream setup scripts, dependencies, containers or tests were run during this import.
+All 27 imported GitHub Actions workflows remain quarantined in [docs/upstream-github-workflows](docs/upstream-github-workflows); the upstream Renovate configuration and GitHub issue/discussion/release routing were also [archived](docs/upstream-repository-controls). The upstream root CODEOWNERS and contributing guide are preserved under docs. The only active GitHub Actions workflow performs [read-only, dependency-free import/branding checks](.github/workflows/goreecloud-source-checks.yml). Inherited setup scripts, application dependencies and containers have not been executed.
 
 ## Next milestones
 
 1. Audit dependencies, license/asset rights, secrets, security and automation.
-2. Apply verified GoreeCloud UI branding and lawfully replace upstream trademark-bearing assets.
+2. Continue verified GoreeCloud UI branding beyond the [official web/PWA icon adoption](docs/GOREECLOUD-BRAND-ADOPTION.md), and lawfully replace remaining upstream trademark-bearing assets.
 3. Plan and validate GoreeCloud Identity, GoreeShield privacy, Wardveil security and GoreeCloud Mesh integration boundaries.
 4. Test builds, authentication, installation, migration, backup/recovery, native mobile clients and accessibility using synthetic data.
-5. Enable reviewed, minimal CI before staging or release.
+5. Expand the narrowly scoped [static source integrity CI](.github/workflows/goreecloud-source-checks.yml) only after reviewing scripts, dependencies and permissions before staging or release.
 
-Original Immich instructions are at [docs.immich.app](https://docs.immich.app/) and are not validated GoreeCloud installation instructions.
+See [release gates](docs/GOREECLOUD-RELEASE-GATES.md), the [supply-chain preflight](docs/GOREECLOUD-SUPPLY-CHAIN-PREFLIGHT.md), [GoreeCloud contribution guidance](CONTRIBUTING.md) and the [official web icon asset record](docs/GOREECLOUD-BRAND-ADOPTION.md). Original Immich instructions are at [docs.immich.app](https://docs.immich.app/) and are not validated GoreeCloud installation instructions.

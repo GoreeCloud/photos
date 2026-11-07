@@ -1,41 +1,15 @@
-## Description
+## GoreeCloud Photos change
 
-<!--- Describe your changes in detail -->
-<!--- Why is this change required? What problem does it solve? -->
-<!--- If it fixes an open issue, please link to the issue here. -->
+Describe what changed, why the change is needed, and any user/privacy impact. Note whether the change updates inherited Immich code or GoreeCloud-specific files.
 
-Fixes # (issue)
+## Validation evidence
 
-## How Has This Been Tested?
+- [ ] Reviewed the affected code and relevant upstream license/third-party notices
+- [ ] Ran Python standard-library source integrity tests for import/branding changes
+- [ ] Recorded any relevant build/runtime checks actually executed
+- [ ] No secrets, personal media, or private user data included in this PR
+- [ ] No previously quarantined upstream automation activated without review
+- [ ] Changes to GoreeCloud UI, privacy, security, identity and integration boundaries are supported by applicable governance
+- [ ] Release/deployment remains gated unless explicitly verified and approved
 
-<!-- Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration -->
-
-- [ ] Test A
-- [ ] Test B
-
-<details><summary><h2>Screenshots (if appropriate)</h2></summary>
-
-<!-- Images go below this line. -->
-
-</details>
-
-<!-- API endpoint changes (if relevant)
-## API Changes
-The `/api/something` endpoint is now `/api/something-else`
--->
-
-## Checklist:
-
-- [ ] I have carefully read CONTRIBUTING.md
-- [ ] I have performed a self-review of my own code
-- [ ] I have made corresponding changes to the documentation if applicable
-- [ ] I have no unrelated changes in the PR.
-- [ ] I have confirmed that any new dependencies are strictly necessary.
-- [ ] I have written tests for new code (if applicable)
-- [ ] I have followed naming conventions/patterns in the surrounding code
-- [ ] All code in `src/services/` uses repositories implementations for database calls, filesystem operations, etc.
-- [ ] All code in `src/repositories/` is pretty basic/simple and does not have any immich specific logic (that belongs in `src/services/`)
-
-## Please describe to which degree, if any, an LLM was used in creating this pull request.
-
-...
+List any checks not performed and the precise reason. Source integrity CI is not a functional, mobile, security or deployment acceptance.

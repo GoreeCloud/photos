@@ -1,0 +1,25 @@
+name: GoreeCloud Photos source integrity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-integrity:
+    name: Read-only import and artwork checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out tracked files without submodules or persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Validate source attribution, workflow quarantine, and approved artwork
+        run: python3 -m unittest discover -s tests/goreecloud -p "test_*.py" -v
