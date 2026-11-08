@@ -299,6 +299,8 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("pnpm --filter @immich/plugin-sdk run build", workflow)
         self.assertIn("pnpm --dir server run build", workflow)
         self.assertIn("python3 scripts/goreecloud/verify_server_build.py", workflow)
+        self.assertIn("pnpm --dir e2e run check", workflow)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs", workflow)
 
     def test_isolated_web_build_is_manual_and_least_privilege(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-web-build.yml").read_text(encoding="utf-8")
