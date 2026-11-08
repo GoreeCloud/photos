@@ -46,6 +46,22 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_scoped_ws_fragment_security_patch_is_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        smoke = (ROOT / "scripts/goreecloud/verify_ws_fragments.cjs").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/goreecloud-e2e-typecheck.yml").read_text(encoding="utf-8")
+        self.assertIn("'engine.io-client>ws': 8.21.3", workspace)
+        self.assertIn("engine.io-client>ws: 8.21.3", lock)
+        self.assertNotIn("  ws@8.20.1:\n    resolution:", lock)
+        self.assertIn("  ws@7.5.12:\n", lock)
+        self.assertIn("  ws@8.21.3:\n", lock)
+        self.assertIn("  ws@8.22.1:\n", lock)
+        self.assertIn("maxFragments: 2", smoke)
+        self.assertIn("WS_ERR_TOO_MANY_BUFFERED_PARTS", smoke)
+        self.assertIn("ws@8.21.3", smoke)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_ws_fragments.cjs", workflow)
+
     def test_e2e_native_timestamp_dependency_removal_is_consistent(self) -> None:
         manifest = (ROOT / "e2e/package.json").read_text(encoding="utf-8")
         test_source = (ROOT / "e2e/src/specs/server/api/library.e2e-spec.ts").read_text(encoding="utf-8")
