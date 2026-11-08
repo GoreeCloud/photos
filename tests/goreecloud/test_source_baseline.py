@@ -46,6 +46,27 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_image_size_v2_parser_patch_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  image-size: 2.0.4\n", workspace)
+        self.assertIn("  image-size: 2.0.4\n", lock)
+        self.assertIn("  image-size@2.0.4:\n    resolution:", lock)
+        self.assertIn("  image-size@2.0.4: {}", lock)
+        self.assertNotIn("image-size@2.0.2", lock)
+        self.assertNotIn("image-size: 2.0.2", lock)
+
+    def test_launch_editor_windows_security_patch_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  launch-editor: 2.14.2\n", workspace)
+        self.assertIn("  launch-editor: 2.14.2\n", lock)
+        self.assertIn("  launch-editor@2.14.2:\n    resolution:", lock)
+        self.assertIn("  launch-editor@2.14.2:\n    dependencies:", lock)
+        self.assertNotIn("launch-editor@2.14.1", lock)
+        self.assertNotIn("launch-editor: 2.14.1", lock)
+        self.assertIn("  shell-quote@1.11.0:\n", lock)
+
     def test_svgo_v3_security_patch_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
