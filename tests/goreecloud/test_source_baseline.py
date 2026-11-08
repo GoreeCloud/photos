@@ -46,6 +46,39 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_e2e_native_timestamp_dependency_removal_is_consistent(self) -> None:
+        manifest = (ROOT / "e2e/package.json").read_text(encoding="utf-8")
+        test_source = (ROOT / "e2e/src/specs/server/api/library.e2e-spec.ts").read_text(encoding="utf-8")
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertNotIn('"utimes":', manifest)
+        self.assertNotIn("  utimes: false", workspace)
+        self.assertIn("import { utimes } from 'node:fs/promises';", test_source)
+        self.assertNotIn("from 'utimes';", test_source)
+        self.assertEqual(test_source.count('await setFixtureMtime('), 5)
+        self.assertIn("const time = new Date(timeMs);", test_source)
+        self.assertNotIn("  utimes@5.2.1:", lock)
+        self.assertNotIn("  tar@6.2.1:", lock)
+        self.assertNotIn("  '@mapbox/node-pre-gyp@1.0.11", lock)
+        self.assertIn("  tar@7.5.22:", lock)
+
+    def test_isolated_e2e_typecheck_is_manual_and_least_privilege(self) -> None:
+        workflow = (ROOT / ".github/workflows/goreecloud-e2e-typecheck.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/goreecloud/verify_e2e_mtime.mjs").read_text(encoding="utf-8")
+        self.assertIn("on:\n  workflow_dispatch:", workflow)
+        self.assertNotIn("\n  push:", workflow)
+        self.assertNotIn("\n  pull_request:", workflow)
+        self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("actions/checkout@" + CHECKOUT_SHA, workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("submodules: false", workflow)
+        self.assertIn("pnpm install --frozen-lockfile --ignore-scripts", workflow)
+        self.assertIn("pnpm --dir e2e run check", workflow)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs", workflow)
+        self.assertIn("447_775_200_000, 447_775_200_001, 447_775_200_001", script)
+        self.assertNotIn("docker compose", workflow)
+        self.assertNotIn("pnpm --dir e2e run test", workflow)
+
     def test_immutable_v5_dos_patch_and_bounded_ci_smoke(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
@@ -201,7 +234,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml", "goreecloud-e2e-typecheck.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
@@ -266,6 +299,8 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("pnpm --filter @immich/plugin-sdk run build", workflow)
         self.assertIn("pnpm --dir server run build", workflow)
         self.assertIn("python3 scripts/goreecloud/verify_server_build.py", workflow)
+        self.assertIn("pnpm --dir e2e run check", workflow)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs", workflow)
 
     def test_isolated_web_build_is_manual_and_least_privilege(self) -> None:
         workflow = (ROOT / ".github/workflows/goreecloud-web-build.yml").read_text(encoding="utf-8")
