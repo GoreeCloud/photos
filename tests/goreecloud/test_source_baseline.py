@@ -46,6 +46,21 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_immutable_v5_dos_patch_and_bounded_ci_smoke(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/goreecloud-docs-build.yml").read_text(encoding="utf-8")
+        smoke = (ROOT / "scripts/goreecloud/verify_immutable_guards.cjs").read_text(encoding="utf-8")
+        self.assertIn("  immutable: 5.1.8\n", workspace)
+        self.assertIn("  immutable: 5.1.8\n", lock)
+        self.assertIn("  immutable@5.1.8:\n    resolution:", lock)
+        self.assertIn("  immutable@5.1.8: {}", lock)
+        self.assertNotIn("immutable@5.1.6", lock)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_immutable_guards.cjs", workflow)
+        self.assertIn("List().setSize(2 ** 30)", smoke)
+        self.assertIn("assert.equal(map.size, colliders.length)", smoke)
+        self.assertIn("immutable@5.1.8", smoke)
+
     def test_image_size_v2_parser_patch_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")

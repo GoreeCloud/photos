@@ -57,6 +57,8 @@ overrides:
   image-size: 2.0.4
   # Webpack dev server editor-launch Windows path sanitization in maintained 2.x
   launch-editor: 2.14.2
+  # Sass transitive immutable v5 DoS fixes (List bounds and hash collisions)
+  immutable: 5.1.8
 packageExtensions:
   nestjs-kysely:
     dependencies:
