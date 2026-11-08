@@ -46,6 +46,26 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_svgo_v3_security_patch_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  svgo: 3.3.5\n", workspace)
+        self.assertIn("  svgo: 3.3.5\n", lock)
+        self.assertIn("  svgo@3.3.5:\n    resolution:", lock)
+        self.assertIn("  svgo@3.3.5:\n    dependencies:", lock)
+        self.assertNotIn("svgo@3.3.4", lock)
+        self.assertNotIn("svgo: 3.3.4", lock)
+
+    def test_systeminformation_patch_consistent(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        self.assertIn("  systeminformation: 5.33.16\n", workspace)
+        self.assertIn("  systeminformation: 5.33.16\n", lock)
+        self.assertIn("  systeminformation@5.33.16:\n    resolution:", lock)
+        self.assertIn("  systeminformation@5.33.16: {}", lock)
+        self.assertNotIn("systeminformation@5.33.15", lock)
+        self.assertNotIn("systeminformation: 5.33.15", lock)
+
     def test_body_parser_v1_patch_preserves_server_major_v2(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")

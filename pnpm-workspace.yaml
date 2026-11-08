@@ -49,6 +49,10 @@ overrides:
   joi: 17.13.9
   # Express 4 docs tooling security backport; retain direct Photos server body-parser 2.x
   'body-parser@1': 1.20.9
+  # SVG script sanitization security backport in existing SVGO v3 line
+  svgo: 3.3.5
+  # Windows command sanitization security patch in existing 5.x host-metrics line
+  systeminformation: 5.33.16
 packageExtensions:
   nestjs-kysely:
     dependencies:
