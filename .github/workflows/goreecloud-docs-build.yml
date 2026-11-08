@@ -33,6 +33,8 @@ jobs:
           corepack prepare pnpm@12.16.1 --activate
       - name: Install lockfile dependencies without lifecycle scripts
         run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
+      - name: Test patched immutable guards on synthetic inputs with process timeout
+        run: timeout 12s node scripts/goreecloud/verify_immutable_guards.cjs
       - name: Build inherited docs in disposable runner
         run: pnpm --dir docs run build
       - name: Verify output without running documentation server
