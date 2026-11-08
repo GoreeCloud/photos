@@ -57,7 +57,8 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("  immutable@5.1.8: {}", lock)
         self.assertNotIn("immutable@5.1.6", lock)
         self.assertIn("timeout 12s node scripts/goreecloud/verify_immutable_guards.cjs", workflow)
-        self.assertIn("List().setSize(2 ** 30)", smoke)
+        self.assertIn("List().set(2 ** 30, 'x')", smoke)
+        self.assertIn("List([1, 2, 3]).setSize(2 ** 31)", smoke)
         self.assertIn("assert.equal(map.size, colliders.length)", smoke)
         self.assertIn("immutable@5.1.8", smoke)
 

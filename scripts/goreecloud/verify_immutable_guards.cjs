@@ -9,7 +9,11 @@ const immutable = require(path.resolve(
   __dirname, '../../node_modules/.pnpm/immutable@5.1.8/node_modules/immutable'
 ));
 
-assert.throws(() => immutable.List().setSize(2 ** 30), RangeError);
+// Upstream permits exactly 2 ** 30 values, but rejects index 2 ** 30
+// and requests beyond this limit. Match the published regression tests.
+assert.throws(() => immutable.List().set(2 ** 30, 'x'), RangeError);
+assert.throws(() => immutable.List([1, 2, 3]).setSize(2 ** 31), RangeError);
+assert.equal(immutable.List([1, 2, 3]).setSize(2 ** 30).size, 2 ** 30);
 
 // 'Aa' and 'BB' use the same polynomial 32-bit public hash. Assert basic
 // correctness with several hundred colliding keys; this is not a benchmark.
