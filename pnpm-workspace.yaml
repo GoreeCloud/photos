@@ -24,7 +24,6 @@ allowBuilds:
   protobufjs: false
   sharp: true
   ssh2: false
-  utimes: false
   '@tailwindcss/oxide': true
   core-js-pure: false
   postman-code-generators: false

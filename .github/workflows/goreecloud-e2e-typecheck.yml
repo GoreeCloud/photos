@@ -1,0 +1,41 @@
+name: GoreeCloud Photos isolated E2E typecheck (experimental)
+
+# Owner-triggered compile and synthetic filesystem smoke. Not integration E2E.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-typecheck:
+    name: Disposable E2E TypeScript and native fs timestamp compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Checkout tracked source without credentials or submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Set up pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Set up pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.16.1 --activate
+      - name: Install frozen lockfile without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
+      - name: Compile generated SDK used by inherited E2E tests
+        run: pnpm --filter @immich/sdk run build
+      - name: Typecheck E2E source without running server or tests
+        run: pnpm --dir e2e run check
+      - name: Verify synthetic millisecond mtime behavior without user data
+        run: timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs

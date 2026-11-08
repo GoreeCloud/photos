@@ -113,3 +113,8 @@ A new owner-triggered workflow performs pinned pnpm 12.16.1 audit JSON reporting
 ### Express 4 body-parser 1.x targeted patch — November 7, 2026
 
 [PR #24](https://github.com/GoreeCloud/photos/pull/24) merged a major-scoped body-parser 1.20.9 patch while preserving Photos server body-parser 2.4.0. Pinned, disposable [docs](https://github.com/GoreeCloud/photos/actions/runs/42423623708), [web](https://github.com/GoreeCloud/photos/actions/runs/42423625948), [server](https://github.com/GoreeCloud/photos/actions/runs/42423628000) and source checks passed. [Advisory run #42423630074](https://github.com/GoreeCloud/photos/actions/runs/42423630074) remained red: full 1 critical/22 high/26 moderate/7 low; production dependency scope (including inherited docs) 0 critical/14 high/23 moderate/4 low. No live service or private media was tested or deployed.
+
+
+### E2E-only utimes / tar 6 native dependency elimination — November 8 candidate
+
+Static dependency tracing identified the tar 6.2.1 critical advisory as E2E devDependencies → utimes 5.2.1 → @mapbox/node-pre-gyp 1.0.11. The only tracked direct package imports were five fixture timestamp adjustments. A candidate changes them to built-in fs.promises.utimes with Date-valued millisecond times and removes the obsolete native addon plus its disabled build allowlist item. Pnpm 12.16.1 lockfile-only, ignore-scripts resolution pruned 26 packages including tar 6.2.1 and retained tar 7.5.22 for server Node-gyp. Synthetic same-host timestamp checks and source integrity passed locally. **Hosted E2E TypeScript, docs/web/server builds, registry advisory rerun, database-backed E2E, and Stable release review are still required.** No real media or user data was read, modified or uploaded.

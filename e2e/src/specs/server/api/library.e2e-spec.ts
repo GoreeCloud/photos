@@ -1,9 +1,17 @@
 import { LoginResponseDto } from '@immich/sdk';
 import { cpSync } from 'node:fs';
+import { utimes } from 'node:fs/promises';
 import { Socket } from 'socket.io-client';
 import { testAssetDir, testAssetDirInternal, utils } from 'src/utils.js';
-import { utimes } from 'utimes';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+// The native utimes addon was used only to control mtime in library reimport
+// tests. The server compares stat.mtime in milliseconds; Node's fs API uses
+// Date instances here to preserve the same millisecond precision.
+const setFixtureMtime = (filepath: string, timeMs: number) => {
+  const time = new Date(timeMs);
+  return utimes(filepath, time, time);
+};
 
 describe('/libraries', () => {
   let admin: LoginResponseDto;
@@ -53,12 +61,12 @@ describe('/libraries', () => {
       });
 
       utils.createImageFile(`${testAssetDir}/temp/reimport/asset.jpg`);
-      await utimes(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_000);
+      await setFixtureMtime(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_000);
 
       await utils.scan(admin.accessToken, library.id);
 
       cpSync(`${testAssetDir}/albums/nature/tanners_ridge.jpg`, `${testAssetDir}/temp/reimport/asset.jpg`);
-      await utimes(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
+      await setFixtureMtime(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
 
       await utils.scan(admin.accessToken, library.id);
 
@@ -89,17 +97,17 @@ describe('/libraries', () => {
       });
 
       utils.createImageFile(`${testAssetDir}/temp/reimport/asset.jpg`);
-      await utimes(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_000);
+      await setFixtureMtime(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_000);
 
       await utils.scan(admin.accessToken, library.id);
 
       cpSync(`${testAssetDir}/albums/nature/tanners_ridge.jpg`, `${testAssetDir}/temp/reimport/asset.jpg`);
-      await utimes(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
+      await setFixtureMtime(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
 
       await utils.scan(admin.accessToken, library.id);
 
       cpSync(`${testAssetDir}/albums/nature/el_torcal_rocks.jpg`, `${testAssetDir}/temp/reimport/asset.jpg`);
-      await utimes(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
+      await setFixtureMtime(`${testAssetDir}/temp/reimport/asset.jpg`, 447_775_200_001);
 
       await utils.scan(admin.accessToken, library.id);
 
