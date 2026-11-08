@@ -53,6 +53,10 @@ overrides:
   svgo: 3.3.5
   # Windows command sanitization security patch in existing 5.x host-metrics line
   systeminformation: 5.33.16
+  # Docusaurus MDX metadata image-size parser bounds fixes; inspected v2.0.4 npm artifact
+  image-size: 2.0.4
+  # Webpack dev server editor-launch Windows path sanitization in maintained 2.x
+  launch-editor: 2.14.2
 packageExtensions:
   nestjs-kysely:
     dependencies:
