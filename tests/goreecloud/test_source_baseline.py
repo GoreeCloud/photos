@@ -46,6 +46,23 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 class SourceBaselineTests(unittest.TestCase):
+    def test_undici_v8_redirect_cache_security_patch(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/goreecloud/verify_undici_redirect_cache.cjs").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/goreecloud-e2e-typecheck.yml").read_text(encoding="utf-8")
+        self.assertIn("'undici@8': 8.12.2", workspace)
+        self.assertIn("undici@8: 8.12.2", lock)
+        self.assertIn("  undici@8.12.2:\n    resolution:", lock)
+        self.assertIn("  undici@8.12.2: {}", lock)
+        self.assertNotIn("undici@8.11.2", lock)
+        self.assertIn("undici: 8.12.2", lock)
+        self.assertIn("127.0.0.1", script)
+        self.assertIn("new cacheStores.MemoryCacheStore()", script)
+        self.assertIn("interceptors.redirect", script)
+        self.assertIn("synthetic-trusted-data", script)
+        self.assertIn("timeout 15s node scripts/goreecloud/verify_undici_redirect_cache.cjs", workflow)
+
     def test_scoped_ws_fragment_security_patch_is_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")

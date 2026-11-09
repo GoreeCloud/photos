@@ -41,3 +41,5 @@ jobs:
         run: timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs
       - name: Verify synthetic WebSocket empty fragment limit
         run: timeout 12s node scripts/goreecloud/verify_ws_fragments.cjs
+      - name: Verify loopback Undici redirect/cache origin isolation
+        run: timeout 15s node scripts/goreecloud/verify_undici_redirect_cache.cjs
