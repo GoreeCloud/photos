@@ -37,6 +37,8 @@ jobs:
         run: timeout 12s node scripts/goreecloud/verify_immutable_guards.cjs
       - name: Verify serializer injection sanitization on synthetic objects
         run: timeout 12s node scripts/goreecloud/verify_serializer_guards.cjs
+      - name: Verify bounded synthetic parser security regressions
+        run: timeout 12s node scripts/goreecloud/verify_parser_guards.cjs
       - name: Build inherited docs in disposable runner
         run: pnpm --dir docs run build
       - name: Verify output without running documentation server

@@ -41,7 +41,7 @@ overrides:
   # Docs Docusaurus pool: security fixes GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr
   tinypool: 2.2.0
   # Backported GHSA fixes in v1 only; retain unrelated brace-expansion v2/v5 graphs
-  'brace-expansion@1': 1.1.20
+  'brace-expansion@1': 1.1.21
   # Upstream 1.16.2 fixes request header/redirect handling advisories without major upgrade
   follow-redirects: 1.16.2
   # Joi 17.x patched messages/prototype and validation security advisories
@@ -68,6 +68,11 @@ overrides:
   'serialize-javascript@6': 7.1.3
   # Docusaurus Mermaid 11.x diagram sanitization/cpu and chart fixes
   mermaid: 11.16.1
+  # Parser CPU/array-limit advisories; preserve unrelated major versions
+  'express@4>qs': 6.16.1
+  colord: 2.9.4
+  'postcss-selector-parser@6': 6.1.5
+  'postcss-selector-parser@7': 7.1.6
   # Scope ws fragment limit patch to engine.io-client; retain other 8.x versions
   'engine.io-client>ws': 8.21.3
 packageExtensions:
