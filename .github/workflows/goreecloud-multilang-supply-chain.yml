@@ -1,0 +1,24 @@
+name: GoreeCloud Photos multi-ecosystem metadata preflight (experimental)
+
+# Intentionally fail-closed on known missing source/artifact digest metadata.
+# This is not a vulnerability or production container scanner.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile-metadata:
+    name: Static Python Rust Flutter and container digest review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout tracked source without persisted credentials or submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Validate inherited multi-language lockfile metadata (fail on blockers)
+        run: python3 scripts/goreecloud/inspect_multilang_supply_chain.py --enforce

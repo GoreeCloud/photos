@@ -300,7 +300,7 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertEqual(len(archived), 27)
         self.assertTrue(all(p.suffix in {".yml", ".yaml"} for p in archived))
         active = {p.name for p in (ROOT / ".github/workflows").iterdir() if p.is_file()}
-        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml", "goreecloud-e2e-typecheck.yml"})
+        self.assertEqual(active, {SOURCE_CHECK, "goreecloud-web-build.yml", "goreecloud-server-build.yml", "goreecloud-dependency-audit.yml", "goreecloud-docs-build.yml", "goreecloud-e2e-typecheck.yml", "goreecloud-multilang-supply-chain.yml"})
         self.assertTrue((ROOT / "docs/UPSTREAM-CODEOWNERS").is_file())
         self.assertFalse((ROOT / "CODEOWNERS").exists())
 
