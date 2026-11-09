@@ -80,6 +80,22 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("z.set(z.string()).max(1)", script)
         self.assertIn("z.map(z.string(), z.string()).max(1)", script)
 
+    def test_serializer_v7_security_patch_and_docs_smoke(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/goreecloud-docs-build.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/goreecloud/verify_serializer_guards.cjs").read_text(encoding="utf-8")
+        self.assertIn("'serialize-javascript@6': 7.0.3", workspace)
+        self.assertIn("serialize-javascript@6: 7.0.3", lock)
+        self.assertIn("  serialize-javascript@7.0.3:\n    resolution:", lock)
+        self.assertIn("  serialize-javascript@7.0.3: {}", lock)
+        self.assertNotIn("serialize-javascript@6.0.2", lock)
+        self.assertIn("serialize-javascript: 7.0.3", lock)
+        self.assertIn("fakeRegex.toJSON", script)
+        self.assertIn("fakeDate.toISOString", script)
+        self.assertIn("assert.throws", script)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_serializer_guards.cjs", workflow)
+
     def test_scoped_ws_fragment_security_patch_is_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
