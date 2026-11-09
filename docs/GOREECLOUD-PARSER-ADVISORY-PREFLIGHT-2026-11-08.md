@@ -30,3 +30,5 @@ Require exact candidate SHA source CI, synthetic timed regression, frozen indepe
 ## First hosted regression correction
 
 The first PR #38 documentation workflow failed because our synthetic malformed-brace test expected exactly two outputs. The official 1.1.21 patch test asserts bounded processing and maxRewrites behavior for that input, not a specific output count. The amended test now checks a nonempty result and retains bounded duration, maxRewrites behavior and an external 12-second timeout. Only a new exact-head hosted run can accept the candidate.
+
+The second hosted attempt reached qs and revealed another incorrect fixture assumption: when arrayLimit is 1, two bracket-index inputs are deliberately represented as an **object** rather than an array. The test now asserts that bounded behavior. It also checks that no prototype mutation occurs without claiming a particular object shape, and counts three tag selectors (section, a, img) in the PostCSS sample. These changes align assertions with existing documented APIs, without disabling any checks or external timeout. Fresh hosted results are still required.
