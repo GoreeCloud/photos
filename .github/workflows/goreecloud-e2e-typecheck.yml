@@ -39,3 +39,5 @@ jobs:
         run: pnpm --dir e2e run check
       - name: Verify synthetic millisecond mtime behavior without user data
         run: timeout 12s node scripts/goreecloud/verify_e2e_mtime.mjs
+      - name: Verify synthetic WebSocket empty fragment limit
+        run: timeout 12s node scripts/goreecloud/verify_ws_fragments.cjs
