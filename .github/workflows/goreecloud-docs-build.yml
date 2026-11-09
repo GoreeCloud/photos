@@ -35,6 +35,8 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only
       - name: Test patched immutable guards on synthetic inputs with process timeout
         run: timeout 12s node scripts/goreecloud/verify_immutable_guards.cjs
+      - name: Verify serializer injection sanitization on synthetic objects
+        run: timeout 12s node scripts/goreecloud/verify_serializer_guards.cjs
       - name: Build inherited docs in disposable runner
         run: pnpm --dir docs run build
       - name: Verify output without running documentation server

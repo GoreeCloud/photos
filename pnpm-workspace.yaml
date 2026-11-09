@@ -63,6 +63,9 @@ overrides:
 
   # Zod v4 array/Set/Map bound checks; keep existing v4 release line
   zod: 4.6.6
+
+  # Isolated webpack plugin serialize-javascript security major 7.x patch
+  'serialize-javascript@6': 7.0.3
   # Scope ws fragment limit patch to engine.io-client; retain other 8.x versions
   'engine.io-client>ws': 8.21.3
 packageExtensions:
