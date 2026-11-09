@@ -42,6 +42,8 @@ jobs:
         run: pnpm --dir server run build
       - name: Check generated server output without starting it
         run: python3 scripts/goreecloud/verify_server_build.py
+      - name: Check Zod bounded synthetic schema collections
+        run: timeout 12s node scripts/goreecloud/verify_zod_size_guards.cjs
       - name: Typecheck E2E source without integration services
         run: pnpm --dir e2e run check
       - name: Validate synthetic E2E millisecond mtime precision

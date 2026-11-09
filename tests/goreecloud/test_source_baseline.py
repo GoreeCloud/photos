@@ -63,6 +63,23 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("synthetic-trusted-data", script)
         self.assertIn("timeout 15s node scripts/goreecloud/verify_undici_redirect_cache.cjs", workflow)
 
+    def test_zod_v4_early_collection_size_security_patch(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        server = (ROOT / "server/package.json").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/goreecloud-server-build.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/goreecloud/verify_zod_size_guards.cjs").read_text(encoding="utf-8")
+        self.assertIn("  zod: 4.6.6", workspace)
+        self.assertIn('"zod": "4.6.6"', server)
+        self.assertIn("  zod@4.6.6:\n    resolution:", lock)
+        self.assertIn("  zod@4.6.6: {}", lock)
+        self.assertNotIn("zod@4.4.3", lock)
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_zod_size_guards.cjs", workflow)
+        self.assertIn("Array(4096).fill", script)
+        self.assertIn("elementChecks, 0", script)
+        self.assertIn("z.set(z.string()).max(1)", script)
+        self.assertIn("z.map(z.string(), z.string()).max(1)", script)
+
     def test_scoped_ws_fragment_security_patch_is_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
