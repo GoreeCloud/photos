@@ -22,3 +22,7 @@ Metadata-only pinned pnpm resolution with lifecycle scripts disabled updates exa
 - Evidence reconciliation after merging; no automatic production deployment or private-photo processing.
 
 This patch is not a substitute for a browser XSS review, malicious diagram-input tests against a sandboxed browser, GoreeShield privacy/consent, Wardveil network/HTTP/media testing, backups, container scans, or Stable release acceptance.
+
+## First hosted regression correction
+
+The initial PR #37 documentation workflow failed an unsupported test assumption: an ordinary function containing a closing-script string literal was expected to be rewritten, but upstream v7.1.3 instead tests a spoofed function.toString() ending in a closing-script tag. The amended test removes the invalid assumption, keeps the spoofed-function security case and its 12-second external timeout, and must pass fresh hosted checks before acceptance.
