@@ -58,6 +58,8 @@ overrides:
   launch-editor: 2.14.2
   # Sass transitive immutable v5 DoS fixes (List bounds and hash collisions)
   immutable: 5.1.8
+  # Retain Undici 8.x while applying reviewed upstream TLS/cache/encoding fixes
+  'undici@8': 8.12.2
   # Scope ws fragment limit patch to engine.io-client; retain other 8.x versions
   'engine.io-client>ws': 8.21.3
 packageExtensions:
