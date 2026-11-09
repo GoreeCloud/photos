@@ -106,6 +106,37 @@ class SourceBaselineTests(unittest.TestCase):
         self.assertIn("  mermaid@11.16.1:\n    resolution:", lock)
         self.assertNotIn("mermaid@11.16.0", lock)
 
+    def test_parser_moderate_advisory_versions_are_major_scoped(self) -> None:
+        workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
+        lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        for item in ("'express@4>qs': 6.16.1", "  colord: 2.9.4",
+                     "'postcss-selector-parser@6': 6.1.5",
+                     "'postcss-selector-parser@7': 7.1.6"):
+            self.assertIn(item, workspace)
+        for item in ("  qs@6.16.1:\n", "  colord@2.9.4:\n",
+                     "  postcss-selector-parser@6.1.5:\n",
+                     "  postcss-selector-parser@7.1.6:\n",
+                     "  brace-expansion@1.1.21:\n",
+                     "  brace-expansion@2.1.7:\n",
+                     "  brace-expansion@5.0.12:\n"):
+            self.assertIn(item, lock)
+        for old in ("qs@6.15.3", "colord@2.9.3",
+                    "postcss-selector-parser@6.1.4",
+                    "postcss-selector-parser@7.1.5",
+                    "brace-expansion@1.1.20"):
+            self.assertNotIn(old, lock)
+
+    def test_parser_synthetic_security_smoke_is_hosted(self) -> None:
+        workflow = (ROOT / ".github/workflows/goreecloud-docs-build.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/goreecloud/verify_parser_guards.cjs").read_text(encoding="utf-8")
+        self.assertIn("timeout 12s node scripts/goreecloud/verify_parser_guards.cjs", workflow)
+        self.assertIn("maxRewrites: 0", script)
+        self.assertIn("repeat(12000)", script)
+        self.assertIn("arrayLimit: 1", script)
+        self.assertIn("2.9.4", script)
+        self.assertIn("postcss-selector-parser", script)
+        self.assertNotIn("eval(", script)
+
     def test_scoped_ws_fragment_security_patch_is_consistent(self) -> None:
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
@@ -248,10 +279,10 @@ class SourceBaselineTests(unittest.TestCase):
         import re
         workspace = (ROOT / "pnpm-workspace.yaml").read_text(encoding="utf-8")
         lock = (ROOT / "pnpm-lock.yaml").read_text(encoding="utf-8")
-        pattern = r"(?m)^\s+['\\\"]?brace-expansion@1['\\\"]?: 1\.1\.20\s*$"
+        pattern = r"(?m)^\s+['\\\"]?brace-expansion@1['\\\"]?: 1\.1\.21\s*$"
         self.assertRegex(workspace, pattern)
         self.assertRegex(lock, pattern)
-        self.assertIn("  brace-expansion@1.1.20:\n", lock)
+        self.assertIn("  brace-expansion@1.1.21:\n", lock)
         self.assertNotIn("brace-expansion@1.1.15", lock)
         self.assertIn("  brace-expansion@2.1.7:\n", lock)
         self.assertIn("  brace-expansion@5.0.12:\n", lock)
