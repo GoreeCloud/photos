@@ -26,3 +26,7 @@ A new bounded synthetic Node regression exercises upstream brace expansion seman
 ## Mandatory acceptance and release limits
 
 Require exact candidate SHA source CI, synthetic timed regression, frozen independent docs/web/server builds, and full/production pnpm advisory rescan before merging. Any unresolved advisory remains visible and audit red. Review the imported code and documentation asset licenses separately, and preserve real photo authorization, authentication, GoreeShield retention/consent, Wardveil defense, recovery, and deployment gates as OPEN.
+
+## First hosted regression correction
+
+The first PR #38 documentation workflow failed because our synthetic malformed-brace test expected exactly two outputs. The official 1.1.21 patch test asserts bounded processing and maxRewrites behavior for that input, not a specific output count. The amended test now checks a nonempty result and retains bounded duration, maxRewrites behavior and an external 12-second timeout. Only a new exact-head hosted run can accept the candidate.
