@@ -66,6 +66,50 @@ class AuditParseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_counts({"metadata": {"vulnerabilities": severities}})
 
+    def test_pnpm_12_missing_total_reconciles_every_advisory(self) -> None:
+        """Current pnpm omits total, but supplies exact advisory severities."""
+        counts = {"info": 0, "low": 2, "moderate": 1, "high": 0, "critical": 0}
+        advisories = {
+            "one": {"severity": "low", "module_name": "alpha"},
+            "two": {"severity": "low", "module_name": "beta"},
+            "three": {"severity": "moderate", "module_name": "gamma"},
+        }
+        for values in (advisories, list(advisories.values())):
+            with self.subTest(kind=type(values).__name__):
+                self.assertEqual(parse_counts({
+                    "metadata": {"vulnerabilities": counts},
+                    "advisories": values,
+                }), counts)
+
+    def test_pnpm_12_missing_total_never_infers_safety_without_advisories(self) -> None:
+        counts = {"info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 0}
+        for value in (None, "unexpected", {}, [{"severity": None}],
+                      [{"severity": ["moderate"]}], [{"severity": "unknown"}],
+                      [False], [{"severity": "low"}]):
+            with self.subTest(value=repr(value)), self.assertRaises(ValueError):
+                parse_counts({"metadata": {"vulnerabilities": counts}, "advisories": value})
+        with self.assertRaises(ValueError):
+            parse_counts({"metadata": {"vulnerabilities": counts}})
+        self.assertEqual(parse_counts({
+            "metadata": {"vulnerabilities": counts}, "advisories": {},
+        }), counts, "a complete empty advisory list can corroborate zero counts")
+
+    def test_missing_total_advisory_count_and_severity_mismatch_fail_closed(self) -> None:
+        counts = {"info": 0, "low": 1, "moderate": 1, "high": 0, "critical": 0}
+        for entries in (
+            [{"severity": "low"}],
+            [{"severity": "low"}, {"severity": "low"}],
+            [{"severity": "moderate"}, {"severity": "high"}],
+            [{"severity": "low"}, {"severity": "moderate"}, {"severity": "low"}],
+        ):
+            with self.subTest(entries=entries), self.assertRaises(ValueError):
+                parse_counts({"metadata": {"vulnerabilities": counts}, "advisories": entries})
+        with self.assertRaises(ValueError):
+            parse_counts({
+                "metadata": {"vulnerabilities": {**counts, "total": 1}},
+                "advisories": [{"severity": "low"}, {"severity": "moderate"}],
+            })
+
     def test_inconsistent_counts_fail_closed(self) -> None:
         with self.assertRaises(ValueError):
             parse_counts({"metadata": {"vulnerabilities": {
