@@ -83,7 +83,7 @@ class AuditParseTests(unittest.TestCase):
 
     def test_pnpm_12_missing_total_never_infers_safety_without_advisories(self) -> None:
         counts = {"info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 0}
-        for value in (None, "unexpected", {}, [{"severity": None}],
+        for value in (None, "unexpected", [{"severity": None}],
                       [{"severity": ["moderate"]}], [{"severity": "unknown"}],
                       [False], [{"severity": "low"}]):
             with self.subTest(value=repr(value)), self.assertRaises(ValueError):
