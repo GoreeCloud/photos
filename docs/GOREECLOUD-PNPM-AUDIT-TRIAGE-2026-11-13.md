@@ -12,6 +12,26 @@ The workflow remains **manual `workflow_dispatch` only**, uses no package instal
 
 **Release gate remains OPEN:** dependency audit nonzero and privacy/security, media decoder, assets, backend, mobile, ML, native, containers, independent real-device checks and recovery still require work. Do not point this import at actual photo libraries.
 
-## Severity-total consistency safeguard
+## Verified pnpm 12.16.1 schema and fail-closed count reconciliation
 
-The summary now also requires `metadata.vulnerabilities.total` to be a nonnegative integer **exactly equal** to the sum of per-severity counts. Missing, malformed, understated, or overstated totals are rejected as unverified rather than misreported as a clean audit. This is a deliberately conservative compatibility gate: if a future pnpm schema intentionally changes its count semantics, verify and adapt that schema before changing this guard.
+An authorized read-only [manual diagnostic workflow](https://github.com/GoreeCloud/photos/actions/runs/43560157601), targeting draft PR #40 at `07dc1e05`, **failed closed** because pinned pnpm 12.16.1 did **not** include the `metadata.vulnerabilities.total` property, even though it emitted all five integer severity counts and an `advisories` object. The reporter previously treated the absent optional field as malformed and printed no useful identities.
+
+A separate local read-only execution of **the same pinned pnpm 12.16.1 CLI** against the identical public lockfile confirmed the actual schema and reconciled *every* advisory object's severity to the metadata counts. The reporter now uses two strict paths:
+
+1. When `total` is supplied, it **must** be an exact nonnegative integer equal to the complete five-level severity count sum. A malformed or inconsistent explicit total is never ignored.
+2. When `total` is absent, a bounded array/dictionary of advisory records **must** be supplied, every entry must have one recognized severity, and the advisory count for **each** severity must exactly match the metadata. Absent, incomplete, inconsistent or malformed input remains **UNVERIFIED**, not clean.
+
+An empty advisory object may corroborate all-zero explicit per-severity counts; it cannot silently clear nonzero findings. Tests cover both valid pnpm forms, incomplete metadata, malformed totals, missing identities, duplicate severity mismatches and log sanitization.
+
+## Latest source-only advisory inventory — not cleared
+
+At the November 13, 2026 (America/Chicago) local read-only scan of draft branch `07dc1e05`:
+
+| Scope | Low | Moderate | High | Critical | Total entries |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Full workspace | 5 | 7 | 0 | 0 | 12 |
+| Production scope | 2 | 5 | 0 | 0 | 7 |
+
+The 7 production-scope entries identify public dependency components `esbuild`, `uuid`, `katex`, `deepmerge`, `glob`, `minimatch`, and `@sveltejs/kit`; the full scope adds multiple separate `@sveltejs/kit` advisories, `@sveltejs/adapter-static` and `cookie`. These are advisory **entries**, not proof that each issue is exploitable in the shipped application. No dependencies were upgraded or product content opened.
+
+The audit command correctly exits nonzero with findings, and a successful reporter parse must still exit **1**, not signal a clean dependency gate. Review package paths, runtime reachability, licensing, upgraded versions, tests, and operating-system/browser compatibility before any dependency change; do not merge or deploy on the strength of this diagnostic alone.
