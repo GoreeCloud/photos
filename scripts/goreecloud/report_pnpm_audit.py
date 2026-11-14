@@ -27,8 +27,8 @@ def parse_counts(report: object) -> dict[str, int]:
             raise ValueError(f"audit count invalid for {level}")
         counts[level] = n
     total = vuln.get("total")
-    if type(total) is int and total < sum(counts.values()):
-        raise ValueError("audit total is lower than severity totals")
+    if type(total) is not int or total < 0 or total != sum(counts.values()):
+        raise ValueError("audit total is absent or inconsistent with severity counts")
     return counts
 
 

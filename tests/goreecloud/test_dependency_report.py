@@ -58,6 +58,14 @@ class AuditParseTests(unittest.TestCase):
             with self.subTest(report=report), self.assertRaises(ValueError):
                 parse_counts(report)
 
+    def test_missing_or_overstated_total_fails_closed(self) -> None:
+        severities = {"info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 0}
+        for total in (None, True, "0", -1, 1):
+            with self.subTest(total=total), self.assertRaises(ValueError):
+                parse_counts({"metadata": {"vulnerabilities": {**severities, "total": total}}})
+        with self.assertRaises(ValueError):
+            parse_counts({"metadata": {"vulnerabilities": severities}})
+
     def test_inconsistent_counts_fail_closed(self) -> None:
         with self.assertRaises(ValueError):
             parse_counts({"metadata": {"vulnerabilities": {

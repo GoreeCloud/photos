@@ -11,3 +11,7 @@ This patch preserves the **fail-closed** audit gate and the existing strict meta
 The workflow remains **manual `workflow_dispatch` only**, uses no package install or lockfile changes, exports no untrusted advisory narrative text, and does not publish output as a release artifact. Manual rerun is required to learn which package/advisory identities the current registry supplies. Review every proposed dependency upgrade for license, source, functionality and compatibility before adoption.
 
 **Release gate remains OPEN:** dependency audit nonzero and privacy/security, media decoder, assets, backend, mobile, ML, native, containers, independent real-device checks and recovery still require work. Do not point this import at actual photo libraries.
+
+## Severity-total consistency safeguard
+
+The summary now also requires `metadata.vulnerabilities.total` to be a nonnegative integer **exactly equal** to the sum of per-severity counts. Missing, malformed, understated, or overstated totals are rejected as unverified rather than misreported as a clean audit. This is a deliberately conservative compatibility gate: if a future pnpm schema intentionally changes its count semantics, verify and adapt that schema before changing this guard.
