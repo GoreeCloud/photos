@@ -49,7 +49,9 @@ def advisory_examples(report: object, limit: int = 12) -> list[tuple[str, str, s
             return "unspecified"
         return re.sub(r"[^A-Za-z0-9@/_.+<>~=* -]", "_", str(value))[:90]
     for item in entries:
-        if not isinstance(item, dict) or item.get("severity") not in ("critical", "high"):
+        # Include lower-severity findings, too: a failing audit with no high
+        # advisories must still provide safely bounded public package identities.
+        if not isinstance(item, dict) or item.get("severity") not in SEVERITIES:
             continue
         out.append((
             safe(item.get("severity")),
@@ -57,7 +59,7 @@ def advisory_examples(report: object, limit: int = 12) -> list[tuple[str, str, s
             safe(item.get("github_advisory_id") or item.get("id")),
             safe(item.get("patched_versions")),
         ))
-    out.sort(key=lambda row: (0 if row[0] == "critical" else 1, row[1], row[2]))
+    out.sort(key=lambda row: (-SEVERITIES.index(row[0]), row[1], row[2]))
     return out[:limit]
 
 def main(argv: list[str]) -> int:
@@ -79,9 +81,11 @@ def main(argv: list[str]) -> int:
         print(f"  {name}: {counts[name]}")
     examples = advisory_examples(report)
     if examples:
-        print("Critical/high advisory samples (package, GHSA/id, patched range; not exhaustive):")
+        print("Bounded advisory identity samples (package, GHSA/id, patched range; not exhaustive):")
         for severity, package, advisory_id, patch in examples:
             print(f"  {severity}: {package}, {advisory_id}, patch={patch}")
+    if sum(counts.values()) and not examples:
+        print("No advisory-level package identities supplied; counts remain actionable but not package-resolved.")
     if code != 0:
         print(f"AUDIT NOT CLEAR: pnpm exited nonzero ({code}). Findings or service errors require triage.")
         return 1

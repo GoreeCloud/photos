@@ -31,6 +31,28 @@ class AuditParseTests(unittest.TestCase):
         self.assertEqual(rows[0][0], "critical")
         self.assertNotIn("\\n", rows[1][1])
 
+    def test_moderate_and_low_findings_remain_visible_without_highs(self) -> None:
+        report = {"advisories": {
+            "low": {"severity": "low", "module_name": "media-codec", "github_advisory_id": "GHSA-4444-5555-6666"},
+            "moderate": {"severity": "moderate", "module_name": "xml-loader", "github_advisory_id": "GHSA-7777-8888-9999"},
+            "info": {"severity": "info", "module_name": "info-package"},
+        }}
+        rows = advisory_examples(report)
+        self.assertEqual([row[0] for row in rows], ["moderate", "low", "info"])
+        self.assertEqual(rows[0][1], "xml-loader")
+        self.assertEqual(len(advisory_examples(report, limit=1)), 1)
+
+    def test_lower_severity_samples_still_sanitize_log_injection(self) -> None:
+        rows = advisory_examples({"advisories": [{
+            "severity": "moderate",
+            "module_name": "safe\\n::error::forged",
+            "github_advisory_id": "GHSA-ABCD-1234-5678",
+            "patched_versions": ">=1.2"
+        }]})
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("\\n", rows[0][1])
+        self.assertNotIn(":", rows[0][1])
+
     def test_incomplete_metadata_fails_closed(self) -> None:
         for report in ({}, [], {"metadata": {"vulnerabilities": {"high": 0}}}):
             with self.subTest(report=report), self.assertRaises(ValueError):
