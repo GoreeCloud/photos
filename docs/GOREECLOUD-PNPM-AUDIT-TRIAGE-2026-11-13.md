@@ -45,3 +45,19 @@ The pinned pnpm 12.16.1 lockfile-only update ran with `--ignore-scripts`; source
 Before patch, public registry advisory metadata reported **production 5 moderate / 2 low** and **full 7 moderate / 5 low**. Following the isolated lockfile update, read-only pinned pnpm audits reported **production 4 moderate / 2 low**, **full 6 moderate / 5 low**. The `@sveltejs/kit@3.1.0` production moderate GHSA-mw6w-2fmv-pvw3 finding disappeared; a separate SvelteKit advisory through other workspace paths remains in full scope. **The audit still fails with unresolved issues and is not cleared.**
 
 Review the separate SvelteKit patch against actual web build, static frontend smoke, dependency provenance and lockfile integrity checks in nonproduction CI. Independent human-interface/browser behavior, source/legal/privacy review, production deployment and the six remaining production advisory entries are not accepted. No dependency should be upgraded solely to force a green advisory count.
+
+
+## Server React Email dependency-path patch — separate stacked draft
+
+The public pnpm 12 audit identified `server > react-email@6.11.5 > glob@13.0.6` as one moderate advisory route. `react-email@6.11.8`, published November 6, 2026, upgrades the direct dependency to `glob ^14.0.3`. A **lockfile-only, no-scripts** pnpm update resolved `react-email@6.11.8`, `glob@14.0.6`, and its `minimatch@11.0.8` dependency, with no new direct runtime library and **no change to pnpm release-age exclusions or existing supply-chain policy**. The original `react-email` declaration was `^6.0.0`; this draft sets `^6.11.8`.
+
+The inspected registry package metadata identifies MIT license and the unchanged Node `>=20.19.0` engine requirement. Package dependency changes between 6.11.5 and 6.11.8 include the `glob` major update; this upstream source/package change is bigger than the manifest diff and is not considered safe solely on metadata. Source scan and disposable server build with `pnpm install --frozen-lockfile --ignore-scripts` are required before acceptance.
+
+**Measured read-only pnpm advisory delta against parent PR #41 (using the same lockfile as input):**
+
+| Scope | Parent | This isolated patch |
+| --- | --- | --- |
+| Production | 4 moderate / 2 low | **3 moderate / 2 low** |
+| Full dependency graph | 6 moderate / 5 low | **6 moderate / 5 low** |
+
+The `glob` advisory no longer appears in production scope because the React Email path moved to `glob 14`. **The full graph still contains a separate affected `glob` route**. Another production `minimatch@10.2.6` path also remains, as do other advisory entries. Both read-only audits continue to exit **nonzero**: product risk and production gate are **not cleared**. This patch must remain separately reviewable and unmerged until the exact-head disposable server compile/test, source/license review, integration compatibility and residual advisory remediation are verified. It does not access media, credentials or a live server and does not permit deployment.
