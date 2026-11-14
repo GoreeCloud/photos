@@ -26,9 +26,28 @@ def parse_counts(report: object) -> dict[str, int]:
         if type(n) is not int or n < 0:
             raise ValueError(f"audit count invalid for {level}")
         counts[level] = n
-    total = vuln.get("total")
-    if type(total) is not int or total < 0 or total != sum(counts.values()):
-        raise ValueError("audit total is absent or inconsistent with severity counts")
+    # pnpm 12.16.1 omits the optional "total" field. Do not mistake its
+    # absence for a clean audit: require a complete, exact advisory-by-severity
+    # reconciliation instead. If total is supplied, keep the stricter check.
+    if "total" in vuln:
+        total = vuln["total"]
+        if type(total) is not int or total < 0 or total != sum(counts.values()):
+            raise ValueError("audit total is invalid or inconsistent with severity counts")
+    else:
+        raw = report.get("advisories")
+        if not isinstance(raw, (dict, list)) or len(raw) > 16_384:
+            raise ValueError("audit total absent and bounded advisory list unavailable")
+        entries = raw.values() if isinstance(raw, dict) else raw
+        observed = {level: 0 for level in SEVERITIES}
+        for item in entries:
+            if not isinstance(item, dict):
+                raise ValueError("audit total absent and advisory entry invalid")
+            severity = item.get("severity")
+            if not isinstance(severity, str) or severity not in observed:
+                raise ValueError("audit total absent and advisory severity invalid")
+            observed[severity] += 1
+        if observed != counts:
+            raise ValueError("audit severity counts disagree with advisory entries")
     return counts
 
 
