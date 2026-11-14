@@ -89,7 +89,7 @@
     "@socket.io/component-emitter": "^3.1.0",
     "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/enhanced-img": "^1.0.0",
-    "@sveltejs/kit": "^3.0.0",
+    "@sveltejs/kit": "^3.1.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/chromecast-caf-sender": "^1.0.11",
