@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "goreecloud-photos-api"
+version = "0.1.0"
+description = "Self-hosted GoreeCloud Photos library API"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "fastapi>=0.115.12,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "python-multipart>=0.0.20,<1",
+  "pillow>=11.2,<13",
+]
+[dependency-groups]
+dev = ["httpx>=0.28,<1", "pytest>=8.3,<10", "ruff>=0.11,<1"]
+[tool.setuptools.packages.find]
+include = ["app*"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+[tool.ruff]
+target-version = "py312"
+line-length = 110
