@@ -204,6 +204,33 @@ export default function App() {
     } finally { if (epoch === sessionEpoch.current) setBusy(false); }
   }
 
+  async function revokeLibrarySessions() {
+    setSecurityError("");
+    if (!currentSecret) {
+      setSecurityError("Enter the current library password to sign out all devices.");
+      return;
+    }
+    const epoch = sessionEpoch.current;
+    setBusy(true);
+    try {
+      const outcome = await api<{ sessions_revoked: boolean }>(
+        token, "/v1/settings/revoke-sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: currentSecret })
+        }
+      );
+      if (epoch !== sessionEpoch.current) return;
+      if (!outcome.sessions_revoked) throw new Error("Session revocation was not confirmed.");
+      clearPrivateSession("All devices signed out. Your password was not changed.");
+    } catch (error) {
+      if (epoch === sessionEpoch.current) {
+        setCurrentSecret("");
+        setSecurityError((error as Error).message || "Could not revoke sessions.");
+      }
+    } finally { if (epoch === sessionEpoch.current) setBusy(false); }
+  }
+
   const refresh = useCallback(async () => {
     if (!token) return;
     const params = new URLSearchParams();
@@ -430,6 +457,10 @@ export default function App() {
             <div className="security-actions">
               <button type="submit" className="primary" disabled={busy || !currentSecret || !newSecret || !confirmSecret}>
                 {busy ? "Changing password…" : "Change password and revoke sessions"}
+              </button>
+              <button type="button" className="quiet" disabled={busy || !currentSecret}
+                onClick={() => void revokeLibrarySessions()}>
+                Sign out all devices without changing password
               </button>
               <button type="button" className="quiet" disabled={busy} onClick={() => clearSecurityForm()}>
                 Cancel
