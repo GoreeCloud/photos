@@ -5,8 +5,8 @@ This is a development-stage self-hosted photo library. Capabilities below descri
 | Capability | API | Web (React) | Linux (Qt Quick 6.12) | Android (Jetpack Compose) |
 | --- | --- | --- | --- | --- |
 | Password-based single-library session | Implemented | Implemented | Implemented | Implemented |
-| Password rotation and all-session revocation | Implemented | Accessible masked change form | CLI companion only | Not yet |
-| Revoke all sessions without changing password | Implemented | CLI companion only | CLI companion only | CLI companion only |
+| Password rotation and all-session revocation | Implemented | Accessible masked change form | Native masked Security dialog | Native masked Security dialog |
+| Revoke all sessions without changing password | Implemented | Web Security control | Native Security dialog | Native Security dialog |
 | Explicit JPEG/PNG/WebP/GIF/MP4 uploads | Implemented | Implemented | Implemented | Implemented |
 | Private image thumbnails | Implemented | Implemented | Implemented | Implemented |
 | Favorites and reversible trash | Implemented | Implemented | Implemented | Implemented |
