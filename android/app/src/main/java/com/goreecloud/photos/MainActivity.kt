@@ -61,6 +61,33 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Foreground-only folder import. Access is granted by the system picker for this action.
+            val folderPicker = rememberLauncherForActivityResult(
+                ActivityResultContracts.OpenDocumentTree()
+            ) { tree ->
+                if (tree == null) return@rememberLauncherForActivityResult
+                loading = true
+                notice = "Checking the selected folder..."
+                scope.launch {
+                    try {
+                        val report = withContext(Dispatchers.IO) {
+                            FolderImport(contentResolver, api).importFolder(tree) { scanned, count ->
+                                if (scanned == count || scanned % 10 == 0) {
+                                    runOnUiThread { notice = "Checking $scanned of $count selected files" }
+                                }
+                            }
+                        }
+                        notice = "${report.uploaded} uploaded · ${report.skipped} already stored · " +
+                            "${report.inTrash} in trash · ${report.failed} failed"
+                        refresh()
+                    } catch (e: Exception) {
+                        notice = e.message ?: "Folder import failed"
+                    } finally {
+                        loading = false
+                    }
+                }
+            }
+
             MaterialTheme {
                 Scaffold(topBar = {
                     Surface(shadowElevation = 2.dp) {
@@ -72,7 +99,7 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = { favorites = !favorites; refresh() }) {
                                     Text(if (favorites) "All" else "Favorites")
                                 }
-                                TextButton(onClick = {
+                                TextButton(enabled = !loading, onClick = {
                                     scope.launch {
                                         withContext(Dispatchers.IO) { runCatching { api.logout() } }
                                         unlocked = false; photos = emptyList()
@@ -117,9 +144,14 @@ class MainActivity : ComponentActivity() {
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text(if (favorites) "Favorites" else "Your collection",
                                     style = MaterialTheme.typography.titleLarge)
-                                Button(enabled = !loading, onClick = {
-                                    picker.launch(arrayOf("image/*", "video/mp4"))
-                                }) { Text("＋ Upload") }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Button(enabled = !loading, onClick = {
+                                        picker.launch(arrayOf("image/*", "video/mp4"))
+                                    }) { Text("＋ Upload") }
+                                    OutlinedButton(enabled = !loading, onClick = {
+                                        folderPicker.launch(null)
+                                    }) { Text("Import folder") }
+                                }
                             }
                             Spacer(Modifier.height(16.dp))
                             if (photos.isEmpty()) Text("No photos in this view yet.")

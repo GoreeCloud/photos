@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -39,6 +40,7 @@ class PhotosApi(private val context: Context) {
         connection.connectTimeout = 12000
         connection.readTimeout = 60000
         connection.useCaches = false
+        connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
         token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
         return connection
@@ -107,6 +109,25 @@ class PhotosApi(private val context: Context) {
     fun trash(id: String) {
         val conn = connection("/v1/assets/$id", "DELETE")
         try { read(conn) } finally { conn.disconnect() }
+    }
+
+    /** Existing hashes map to whether they are currently in the trash. */
+    fun existingHashes(hashes: List<String>): Map<String, Boolean> {
+        require(hashes.isNotEmpty() && hashes.size <= 100)
+        val conn = connection("/v1/assets/lookup", "POST")
+        try {
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            val body = JSONObject().put("hashes", JSONArray(hashes)).toString().toByteArray()
+            conn.outputStream.use { it.write(body) }
+            val items = JSONObject(read(conn)).getJSONArray("existing")
+            return buildMap {
+                for (i in 0 until items.length()) {
+                    val item = items.getJSONObject(i)
+                    put(item.getString("sha256"), item.getBoolean("trashed"))
+                }
+            }
+        } finally { conn.disconnect() }
     }
 
     fun upload(uri: Uri) {
