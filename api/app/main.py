@@ -8,7 +8,6 @@ import re
 import secrets
 import sqlite3
 import tempfile
-import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -83,6 +82,12 @@ def init_storage(settings: Settings) -> None:
         db.executescript("""
             CREATE TABLE IF NOT EXISTS configuration (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sessions (digest TEXT PRIMARY KEY, expires INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS auth_failures (
+                peer_digest TEXT PRIMARY KEY,
+                failed_count INTEGER NOT NULL,
+                window_start INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_auth_failures_window ON auth_failures(window_start);
             CREATE TABLE IF NOT EXISTS assets (
                 id TEXT PRIMARY KEY, sha256 TEXT NOT NULL UNIQUE, filename TEXT NOT NULL,
                 media_type TEXT NOT NULL, bytes INTEGER NOT NULL, created_at TEXT NOT NULL,
@@ -99,6 +104,10 @@ def init_storage(settings: Settings) -> None:
                 PRIMARY KEY (album_id, asset_id)
             );
         """)
+        db.execute(
+            "INSERT OR IGNORE INTO configuration(key,value) VALUES('rate_secret', ?)",
+            (secrets.token_hex(32),),
+        )
         row = db.execute("SELECT value FROM configuration WHERE key='password'").fetchone()
         if row is None:
             if not settings.admin_password or len(settings.admin_password) < 12:
@@ -160,9 +169,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type"]
     )
-    failed: dict[str, list[float]] = {}
-    failed_lock = threading.Lock()
-
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
@@ -189,29 +195,64 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/v1/session")
     def login(body: PasswordIn, request: Request):
-        # Per-process backstop; enforce edge rate limits for multi-worker or Internet exposure.
+        # Stable per-library salt prevents retained raw IPs or reusable public hashes.
+        # SQLite serializes login checks across workers sharing one local data volume.
+        # Do not trust X-Forwarded-For as an authenticated client identity.
         peer = request.client.host if request.client else "unknown"
-        now = time.monotonic()
-        with failed_lock:
-            attempts = [t for t in failed.get(peer, []) if now - t < 900]
-            failed[peer] = attempts
-            if len(attempts) >= 5:
-                raise HTTPException(429, "Too many login attempts; try later")
+        now = int(time.time())
+        login_error: int | None = None
+        response: dict | None = None
         with database(settings) as db:
-            row = db.execute("SELECT value FROM configuration WHERE key='password'").fetchone()
-            valid = check_password(body.password, row["value"])
-            if not valid:
-                with failed_lock:
-                    failed[peer].append(now)
-                raise HTTPException(401, "Invalid password")
-            token = secrets.token_urlsafe(32)
-            expiry = int(time.time()) + TOKEN_SECONDS
-            db.execute("DELETE FROM sessions WHERE expires <= ?", (int(time.time()),))
-            db.execute("INSERT INTO sessions VALUES (?,?)",
-                       (hashlib.sha256(token.encode()).hexdigest(), expiry))
-        with failed_lock:
-            failed.pop(peer, None)
-        return {"access_token": token, "expires_at": expiry}
+            db.execute("BEGIN IMMEDIATE")
+            secret_row = db.execute(
+                "SELECT value FROM configuration WHERE key='rate_secret'"
+            ).fetchone()
+            if secret_row is None:
+                raise RuntimeError("Missing login rate-limit secret")
+            peer_digest = hmac.new(
+                bytes.fromhex(secret_row["value"]), peer.encode(), hashlib.sha256
+            ).hexdigest()
+            db.execute("DELETE FROM auth_failures WHERE window_start <= ?", (now - 900,))
+            attempts = db.execute(
+                "SELECT failed_count, window_start FROM auth_failures WHERE peer_digest=?",
+                (peer_digest,),
+            ).fetchone()
+            if attempts and attempts["failed_count"] >= 5:
+                login_error = 429
+            else:
+                password_hash = db.execute(
+                    "SELECT value FROM configuration WHERE key='password'"
+                ).fetchone()
+                if not check_password(body.password, password_hash["value"]):
+                    login_error = 401
+                    if attempts:
+                        db.execute(
+                            "UPDATE auth_failures SET failed_count=failed_count+1 WHERE peer_digest=?",
+                            (peer_digest,),
+                        )
+                    else:
+                        db.execute(
+                            "INSERT INTO auth_failures VALUES (?,?,?)",
+                            (peer_digest, 1, now),
+                        )
+                else:
+                    db.execute(
+                        "DELETE FROM auth_failures WHERE peer_digest=?", (peer_digest,)
+                    )
+                    token = secrets.token_urlsafe(32)
+                    expiry = now + TOKEN_SECONDS
+                    db.execute("DELETE FROM sessions WHERE expires <= ?", (now,))
+                    db.execute(
+                        "INSERT INTO sessions VALUES (?,?)",
+                        (hashlib.sha256(token.encode()).hexdigest(), expiry),
+                    )
+                    response = {"access_token": token, "expires_at": expiry}
+        if login_error == 429:
+            raise HTTPException(429, "Too many login attempts; try later")
+        if login_error == 401:
+            raise HTTPException(401, "Invalid password")
+        assert response is not None
+        return response
 
     @app.delete("/v1/session", status_code=204, dependencies=[Depends(authorized)])
     def logout(authorization: Annotated[str, Header()]):

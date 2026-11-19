@@ -67,7 +67,7 @@ Refer to [security and operations](docs/SECURITY.md), [architecture](docs/ARCHIT
 
 ## Safety / known gaps
 
-Not production-hardened: no end-to-end encryption, full MP4 decoding validation, automatic retention cleanup, remote backups, multi-user ACLs, full-text/image-content search, HEIC/RAW handling, advanced face recognition, background Android sync, or signed app distribution. Password rate limits are **per process**, so place an ingress rate limiter in front of any multi-worker/public deployment. A bearer token is not E2EE. SQLite targets one writable host; multiple replicas require a different persistence architecture. The first-run password and data volume must be backed up separately, with recovery validated.
+Not production-hardened: no end-to-end encryption, full MP4 decoding validation, automatic retention cleanup, remote backups, multi-user ACLs, full-text/image-content search, HEIC/RAW handling, advanced face recognition, background Android sync, or signed app distribution. Password rate limits persist in the single-library SQLite database across local workers and service restarts; still deploy a separate ingress limiter for public or shared reverse-proxy networks. A bearer token is not E2EE. SQLite targets one writable host; multiple replicas require a different persistence architecture. The first-run password and data volume must be backed up separately, with recovery validated.
 
 ## Roadmap
 

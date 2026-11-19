@@ -16,7 +16,7 @@ The password hash is scrypt with a random per-library 16-byte salt. Session toke
 - No public cloud storage or untrusted third-party AI calls.
 - Compose binds only to loopback, drops Linux capabilities, and uses a non-root user.
 - Serve behind TLS with strict network egress, size/time limits, and IP throttling.
-- Prefer one API instance against a single SQLite volume; multi-worker login-limiting is **not** shared.
+- Prefer one API instance against a single SQLite volume. Login failures are tracked transactionally for 15 minutes in SQLite across local processes using per-library HMACs of network peers, not raw IPs. Place a separate gateway rate limiter in front of any publicly accessible reverse proxy: its shared loopback peer may not identify individual clients.
 - Keep database and media directories mode 0700. Apply private volume backups and storage quotas.
 - Do not execute uploaded content; previews are decoded by Pillow, an untrusted media parser that requires timely updates.
 - Image uploads are rejected above 50 megapixels before full decoding. Identical concurrent uploads are serialized at the metadata transaction boundary so one succeeds and others receive a duplicate response.
