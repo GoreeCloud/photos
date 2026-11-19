@@ -15,6 +15,7 @@ uv run --frozen photosctl list --search vacation --favorites
 uv run --frozen photosctl albums
 uv run --frozen photosctl stats
 uv run --frozen photosctl change-password
+uv run --frozen photosctl revoke-sessions
 uv run --frozen photosctl create-album "Family"
 uv run --frozen photosctl upload /path/to/selected/photo.jpg
 uv run --frozen photosctl download 00000000-0000-4000-8000-000000000042 --output /private/photo.jpg
@@ -47,3 +48,7 @@ These archives are **unencrypted**; keep them in a restricted encrypted volume a
 ## Changing the private library password
 
 Run `uv run --frozen photosctl --server https://your-private-server.example change-password`. The CLI prompts for the **current**, **new** and **confirmed new** password without accepting secrets as command arguments. The authenticated API verifies the existing secret, updates the stored scrypt hash, and immediately revokes **every** active session across web, Linux, Android and CLI clients. All clients must log in again. Avoid rotation during active uploads or exports; the server may interrupt in-flight authenticated operations. The initial `PHOTOS_ADMIN_PASSWORD` environment variable does not override a rotated stored password on restart. Keep recovery documentation securely, and do not claim a lost password can be recovered without an existing authenticated recovery process.
+
+## Sign out every device without password rotation
+
+Run `photosctl --server https://your-private-server.example revoke-sessions`. The command requires the current library password through a non-echoing prompt even if an existing `PHOTOS_ACCESS_TOKEN` is supplied. It revokes all SQLite bearer sessions, including the current CLI session. The password itself does not change; users can sign in again. The command logs no secrets and stores no local credentials. This is for intentional owner-directed lockout, not a substitute for password rotation if a credential is suspected to be compromised.
