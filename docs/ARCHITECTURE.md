@@ -39,5 +39,7 @@ Compose Android┘                 ├── /data/objects/xx/<sha256>.<ext>
 | DELETE | `/v1/assets/{id}` | Soft delete |
 | POST | `/v1/assets/{id}/restore` | Restore |
 | GET/POST | `/v1/albums` | List/create |
-| GET | `/v1/albums/{id}/assets` | List album items |
+| GET | `/v1/albums/{id}/assets` | List album items, with optional bounded `limit`, `offset`, and filename `search` |
+| PATCH/DELETE | `/v1/albums/{id}` | Rename or delete only the album (original media is preserved) |
+| DELETE | `/v1/albums/{id}/assets/{assetId}` | Remove album membership only |
 | POST | `/v1/albums/{id}/assets/{assetId}` | Add item |

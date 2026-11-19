@@ -427,6 +427,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                        (album_id, name, datetime.now(UTC).isoformat()))
         return {"id": album_id, "name": name}
 
+    @app.patch("/v1/albums/{album_id}", dependencies=[Depends(authorized)])
+    def rename_album(album_id: str, body: AlbumIn):
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(422, "Album name cannot be blank")
+        with database(settings) as db:
+            result = db.execute("UPDATE albums SET name=? WHERE id=?", (name, album_id))
+            if not result.rowcount:
+                raise HTTPException(404, "Album not found")
+        return {"id": album_id, "name": name}
+
+    @app.delete("/v1/albums/{album_id}", status_code=204, dependencies=[Depends(authorized)])
+    def delete_album(album_id: str):
+        with database(settings) as db:
+            result = db.execute("DELETE FROM albums WHERE id=?", (album_id,))
+            if not result.rowcount:
+                raise HTTPException(404, "Album not found")
+        return Response(status_code=204)
+
     @app.post("/v1/albums/{album_id}/assets/{asset_id}", dependencies=[Depends(authorized)])
     def add_album_asset(album_id: str, asset_id: str):
         find_asset(asset_id)
@@ -436,15 +455,47 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             db.execute("INSERT OR IGNORE INTO album_assets VALUES(?,?)", (album_id, asset_id))
         return {"album_id": album_id, "asset_id": asset_id}
 
-    @app.get("/v1/albums/{album_id}/assets", dependencies=[Depends(authorized)])
-    def album_assets(album_id: str):
+    @app.delete(
+        "/v1/albums/{album_id}/assets/{asset_id}",
+        status_code=204,
+        dependencies=[Depends(authorized)],
+    )
+    def remove_album_asset(album_id: str, asset_id: str):
         with database(settings) as db:
             if not db.execute("SELECT 1 FROM albums WHERE id=?", (album_id,)).fetchone():
                 raise HTTPException(404, "Album not found")
-            rows = db.execute("""SELECT assets.* FROM assets JOIN album_assets ON assets.id=album_assets.asset_id
-                WHERE album_assets.album_id=? AND assets.deleted_at IS NULL
-                ORDER BY assets.created_at DESC""", (album_id,)).fetchall()
-        return {"items": [asset_dict(r) for r in rows], "total": len(rows)}
+            result = db.execute(
+                "DELETE FROM album_assets WHERE album_id=? AND asset_id=?", (album_id, asset_id)
+            )
+            if not result.rowcount:
+                raise HTTPException(404, "Asset is not in album")
+        return Response(status_code=204)
+
+    @app.get("/v1/albums/{album_id}/assets", dependencies=[Depends(authorized)])
+    def album_assets(
+        album_id: str,
+        search: str = Query("", max_length=128),
+        limit: int | None = Query(None, ge=1, le=100),
+        offset: int = Query(0, ge=0, le=1_000_000),
+    ):
+        # Omitting a limit preserves the original complete-list client contract.
+        if limit is None and offset:
+            raise HTTPException(422, "Offset requires an explicit limit")
+        where = "album_assets.album_id=? AND assets.deleted_at IS NULL"
+        args: list[object] = [album_id]
+        if search:
+            where += " AND assets.filename LIKE ? ESCAPE '\\'"
+            args.append("%" + search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
+        join = " FROM assets JOIN album_assets ON assets.id=album_assets.asset_id WHERE " + where
+        with database(settings) as db:
+            if not db.execute("SELECT 1 FROM albums WHERE id=?", (album_id,)).fetchone():
+                raise HTTPException(404, "Album not found")
+            count = db.execute("SELECT count(*)" + join, args).fetchone()[0]
+            query = "SELECT assets.*" + join + " ORDER BY assets.created_at DESC, assets.id DESC"
+            rows = db.execute(
+                query + " LIMIT ? OFFSET ?", [*args, limit, offset]
+            ).fetchall() if limit is not None else db.execute(query, args).fetchall()
+        return {"items": [asset_dict(row) for row in rows], "total": count}
 
     return app
 

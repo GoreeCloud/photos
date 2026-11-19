@@ -58,6 +58,13 @@ h2 { font-size: var(--gc-type-heading); }
 .hero { display:flex; gap:24px; justify-content:space-between; align-items:center; margin-bottom:44px; }
 .hero h1 { font-size:clamp(32px,4vw,56px); margin-bottom:12px; }
 .subtitle { color:var(--gc-text-soft); margin:0; }
+.album-commands { display:flex; align-items:center; gap:var(--gc-space-2);
+  flex-wrap:wrap; margin-bottom:var(--gc-space-6); }
+.album-commands button { min-height:var(--gc-control-min); border:1px solid var(--gc-outline-soft);
+  background:var(--gc-surface); color:var(--gc-text); border-radius:var(--gc-radius-sm);
+  padding:0 var(--gc-space-4); }
+.album-commands button:hover { background:var(--gc-surface-tonal); }
+.album-commands small { color:var(--gc-text-soft); }
 .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
 .section-head h2 { margin:0; }
 .section-head span { color:var(--gc-text-soft); font-size:var(--gc-type-support); }

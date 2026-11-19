@@ -80,18 +80,14 @@ export default function App() {
     try {
       const [assetData, albumData] = await Promise.all([
         api<{ items: Asset[]; total: number }>(token, albumId
-          ? "/v1/albums/" + encodeURIComponent(albumId) + "/assets"
+          ? "/v1/albums/" + encodeURIComponent(albumId) + "/assets?" + params
           : "/v1/assets?" + params),
         api<{ items: Album[] }>(token, "/v1/albums")
       ]);
       if (activeRequest !== requestNumber.current) return;
-      // Album endpoint currently returns a complete album; only the main library is server-paged.
-      const albumMatches = albumId ? assetData.items.filter(a =>
-        a.filename.toLocaleLowerCase().includes(search.toLocaleLowerCase())) : [];
-      const count = albumId ? albumMatches.length : assetData.total;
-      if (page > 0 && page * PAGE_SIZE >= count) { setPage(page - 1); return; }
-      setAssets(albumId ? albumMatches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : assetData.items);
-      setTotal(count);
+      if (page > 0 && page * PAGE_SIZE >= assetData.total) { setPage(page - 1); return; }
+      setAssets(assetData.items);
+      setTotal(assetData.total);
       setAlbums(albumData.items);
     } catch (e) {
       if (activeRequest === requestNumber.current) setNotice((e as Error).message);
@@ -176,6 +172,41 @@ export default function App() {
     } catch (e) { setNotice((e as Error).message); }
   }
 
+  async function renameAlbum() {
+    const album = albums.find(item => item.id === albumId);
+    if (!album) return;
+    const entered = window.prompt("New album name", album.name);
+    if (!entered?.trim() || entered.trim() === album.name) return;
+    try {
+      await api(token, "/v1/albums/" + encodeURIComponent(albumId), {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: entered.trim() })
+      });
+      setNotice("Album renamed.");
+      await refresh();
+    } catch (e) { setNotice((e as Error).message); }
+  }
+
+  async function deleteAlbum() {
+    const album = albums.find(item => item.id === albumId);
+    if (!album || !window.confirm('Delete album "' + album.name +
+      '"? The photos will remain in your library.')) return;
+    try {
+      await api(token, "/v1/albums/" + encodeURIComponent(albumId), { method: "DELETE" });
+      setPage(0); setAlbumId(""); setNotice("Album deleted. Your photos were kept.");
+    } catch (e) { setNotice((e as Error).message); }
+  }
+
+  async function removeFromAlbum(asset: Asset) {
+    if (!albumId) return;
+    try {
+      await api(token, "/v1/albums/" + encodeURIComponent(albumId) +
+        "/assets/" + encodeURIComponent(asset.id), { method: "DELETE" });
+      setNotice("Removed from album. Original photo is still in your library.");
+      await refresh();
+    } catch (e) { setNotice((e as Error).message); }
+  }
+
   if (!token) return <main className="login-wrap">
     <section className="login-card">
       <div className="brand-mark" aria-hidden="true">✦</div>
@@ -243,6 +274,11 @@ export default function App() {
             </button>
           </div>
         </div>
+        {albumId && <div className="album-commands" role="group" aria-label="Album actions">
+          <button type="button" onClick={() => void renameAlbum()}>Rename album</button>
+          <button type="button" onClick={() => void deleteAlbum()}>Delete album</button>
+          <small>Deleting an album never deletes its photos.</small>
+        </div>}
         {notice && <p className="message" role="status">{notice}
           <button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></p>}
         <div className="section-head"><h2>{assets.length ? "Your collection" : "Nothing here yet"}</h2>
@@ -261,6 +297,9 @@ export default function App() {
                 <button aria-label={asset.favorite ? "Remove from favorites" : "Favorite"}
                   title={asset.favorite ? "Remove favorite" : "Favorite"}
                   onClick={() => void perform(asset, "favorite")}>{asset.favorite ? "♥" : "♡"}</button>
+                {albumId && <button aria-label={"Remove " + asset.filename + " from this album"}
+                  title="Remove from album (keep original)"
+                  onClick={() => void removeFromAlbum(asset)}>Remove</button>}
                 <button aria-label={"Move " + asset.filename + " to trash"}
                   title="Move to trash" onClick={() => void perform(asset, "delete")}>⌫</button>
                 {!!albums.length && <select aria-label={"Add " + asset.filename + " to album"} value=""
