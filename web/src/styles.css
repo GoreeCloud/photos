@@ -59,6 +59,18 @@ h2 { font-size: var(--gc-type-heading); }
 .hero { display:flex; gap:24px; justify-content:space-between; align-items:center; margin-bottom:44px; }
 .hero h1 { font-size:clamp(32px,4vw,56px); margin-bottom:12px; }
 .subtitle { color:var(--gc-text-soft); margin:0; }
+.library-metrics { margin:0 0 var(--gc-space-8); }
+.library-metrics dl { margin:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:var(--gc-space-3); }
+.library-metrics dl > div { border:1px solid var(--gc-outline-soft);
+  border-radius:var(--gc-radius-sm); padding:var(--gc-space-4);
+  background:var(--gc-surface); min-width:0; }
+.library-metrics dt { font-size:var(--gc-type-label); color:var(--gc-text-soft); }
+.library-metrics dd { font-weight:750; font-size:clamp(19px,2vw,25px);
+  margin:var(--gc-space-2) 0 0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.library-metrics p { color:var(--gc-text-soft); font-size:var(--gc-type-label);
+  margin:var(--gc-space-2) 0 0; }
+@media(max-width:700px) { .library-metrics dl { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .album-commands { display:flex; align-items:center; gap:var(--gc-space-2);
   flex-wrap:wrap; margin-bottom:var(--gc-space-6); }
 .album-commands button { min-height:var(--gc-control-min); border:1px solid var(--gc-outline-soft);
