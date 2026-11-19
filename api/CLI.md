@@ -13,6 +13,7 @@ uv run --frozen photosctl health
 uv run --frozen photosctl list --limit 40 --page 1
 uv run --frozen photosctl list --search vacation --favorites
 uv run --frozen photosctl albums
+uv run --frozen photosctl stats
 uv run --frozen photosctl change-password
 uv run --frozen photosctl create-album "Family"
 uv run --frozen photosctl upload /path/to/selected/photo.jpg

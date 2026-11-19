@@ -180,6 +180,8 @@ class MainActivity : ComponentActivity() {
                                     Text("Refresh")
                                 }
                                 TextButton(enabled = !loading, onClick = {
+                                    // Deny local authorization now, before remote network I/O.
+                                    val previousSession = api.clearSession()
                                     loading = true
                                     requestId++
                                     unlocked = false
@@ -188,7 +190,9 @@ class MainActivity : ComponentActivity() {
                                     total = 0
                                     pageIndex = 0
                                     scope.launch {
-                                        withContext(Dispatchers.IO) { runCatching { api.logout() } }
+                                        withContext(Dispatchers.IO) {
+                                            runCatching { api.revokeSession(previousSession) }
+                                        }
                                         loading = false
                                     }
                                 }) { Text("Lock") }

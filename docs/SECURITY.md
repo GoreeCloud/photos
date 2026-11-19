@@ -30,7 +30,7 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 - Browser fetches authenticated originals to blob URLs for display; avoid opening very large videos on memory-constrained clients.
 - The Linux native Save-original flow explicitly requests a local destination, rejects HTTP redirects, bounds network buffers and total original size, and promotes a 0600 scratch file only after a complete authenticated transfer. It denies active originals in trash and discards transfers when the session locks.
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
-- No server-side token rotation or password-change endpoint exists yet. Recover using isolated DB administrative procedures, not public endpoints.
+- There is now a bearer-authenticated password-change endpoint requiring current-password confirmation; successful rotation invalidates all existing sessions. There is no public recovery route or GoreeCloud Identity integration.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.
 - Private `GET /v1/library/stats` returns bounded aggregate counters only; it requires the same bearer authorization as the library and never includes source filenames, paths, or hashes.
 - CORS does not replace authentication; do not add wildcard allowed origins.
@@ -43,3 +43,11 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 
 ## Pre-release gates
 Run Python tests, static lint, web build, Qt QML runtime check, Android emulator/device test, authorization and file-handling fuzzing, vulnerability scans, license scan, backup/restore drill, and HTTPS ingress verification before production use.
+
+## Android session and response controls
+
+Android metadata JSON fetches are bounded to 4 MiB, and thumbnails retain the compressed 6 MiB and decoded 2048-pixel dimension limits. Lock invalidates the local bearer token synchronously before remote revocation and in-progress exports check session continuity. This does not replace device-level authorization, device testing, or server-side controls.
+
+## CI dependency pinning
+
+GitHub Actions in both workflow files are pinned to full upstream commit SHAs resolved from their maintained release tags, rather than mutable major tags. This reduces moving-tag supply-chain exposure but does **not** guarantee package/code safety, runner security or transitive dependency immutability. Revalidate each official upstream action and pin intentionally when applying security updates; do not replace pins with unreviewed scripts. Existing pinned Python/Node/Gradle tooling and GitHub branch safeguards still apply.
