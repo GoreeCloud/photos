@@ -42,8 +42,10 @@ jobs:
           python-version: '3.12'
       - run: python -m py_compile linux/main.py
       - name: Install Qt runtime system libraries
-        timeout-minutes: 3
-        run: sudo apt-get install -y --no-install-recommends -o Acquire::Retries=2 libegl1 libopengl0 libxkbcommon0 libfontconfig1
+        timeout-minutes: 4
+        run: |
+          timeout 120s sudo apt-get update -qq -o Acquire::Retries=1
+          timeout 90s sudo apt-get install -y --no-install-recommends -o Acquire::Retries=2 libegl1 libopengl0 libxkbcommon0 libfontconfig1
       - name: Qt Quick 6.12 headless QML launch smoke
         timeout-minutes: 3
         run: |
