@@ -144,3 +144,33 @@ h2 { font-size: var(--gc-type-heading); }
   .hero { align-items:flex-start; flex-direction:column; gap:22px; }
 }
 @media(prefers-reduced-motion:reduce){ *,*:before,*:after { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
+
+/* Photos is media-first: a compact, accessible import timeline rather than a file-card dashboard.
+   All color, spacing, and typography references come from pinned GoreeCloud UI tokens. */
+.content { padding-top:clamp(20px,3vw,38px); }
+.hero { margin-bottom:var(--gc-space-6); }
+.library-metrics { padding:0 var(--gc-space-4); border:1px solid var(--gc-outline-soft);
+  border-radius:var(--gc-radius-sm); background:var(--gc-surface); }
+.library-metrics summary { padding:var(--gc-space-3) 0; cursor:pointer;
+  color:var(--gc-text-soft); font-size:var(--gc-type-support); }
+.library-metrics summary:focus-visible { outline:3px solid var(--gc-focus-ring); outline-offset:2px; }
+.library-metrics section { padding:var(--gc-space-3) 0 var(--gc-space-4); }
+.photo-timeline { display:grid; gap:var(--gc-space-8); }
+.timeline-heading { display:flex; justify-content:space-between; align-items:baseline;
+  flex-wrap:wrap; gap:var(--gc-space-2); margin-bottom:var(--gc-space-4); }
+.timeline-heading h3 { margin:0; font-size:var(--gc-type-heading); }
+.timeline-heading span { color:var(--gc-text-soft); font-size:var(--gc-type-label); }
+.photo-grid { grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; }
+.photo-card { border:0; box-shadow:none; background:transparent; overflow:visible; }
+.photo-open { border-radius:var(--gc-radius-sm); }
+.thumbnail, .placeholder { width:100%; height:auto; aspect-ratio:1/1; object-fit:cover; }
+.photo-open .thumbnail { transition:transform 180ms ease; }
+.photo-open:hover .thumbnail, .photo-open:focus-visible .thumbnail { transform:scale(1.025); }
+.card-title { font-size:var(--gc-type-support); margin:8px 4px 2px; }
+.card-date { margin:0 4px 5px; }
+.card-actions { padding:3px 0 8px; }
+@media(max-width:480px) {
+  .photo-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .timeline-heading h3 { font-size:var(--gc-type-support); }
+  .hero h1 { font-size:clamp(30px,8vw,40px); }
+}
