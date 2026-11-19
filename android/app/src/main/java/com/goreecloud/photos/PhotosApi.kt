@@ -26,6 +26,18 @@ enum class LibraryView { ALL, FAVORITES, TRASH }
 data class PhotosPage(val items: List<Photo>, val total: Int)
 data class Album(val id: String, val name: String, val count: Int)
 
+/** Canonical identifiers cannot escape private album and photo routes. */
+internal fun canonicalLibraryId(id: String): String {
+    require(UUID.fromString(id).toString() == id) { "Invalid album or photo ID" }
+    return id
+}
+
+internal fun validAlbumName(name: String): String {
+    val trimmed = name.trim()
+    require(trimmed.length in 1..100) { "Album name must be 1-100 characters" }
+    return trimmed
+}
+
 /** Limit private API response allocation before reading the complete body. */
 internal fun readBounded(source: InputStream, maxBytes: Int): ByteArray {
     require(maxBytes > 0)
@@ -216,10 +228,7 @@ class PhotosApi(private val context: Context) {
         }
     }
 
-    private fun canonicalId(id: String): String {
-        require(UUID.fromString(id).toString() == id) { "Invalid album or photo ID" }
-        return id
-    }
+    private fun canonicalId(id: String) = canonicalLibraryId(id)
 
     /** Read and edit private album membership; never deletes any original. */
     fun albums(): List<Album> {
@@ -237,8 +246,7 @@ class PhotosApi(private val context: Context) {
     }
 
     fun createAlbum(name: String): Album {
-        val trimmed = name.trim()
-        require(trimmed.length in 1..100) { "Album name must be 1-100 characters" }
+        val trimmed = validAlbumName(name)
         val conn = connection("/v1/albums", "POST")
         try {
             conn.doOutput = true
