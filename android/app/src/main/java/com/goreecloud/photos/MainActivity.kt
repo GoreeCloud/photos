@@ -1,6 +1,8 @@
 package com.goreecloud.photos
 
 import android.graphics.Bitmap
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,6 +46,7 @@ class MainActivity : ComponentActivity() {
             var total by remember { mutableIntStateOf(0) }
             var requestId by remember { mutableIntStateOf(0) }
             var photos by remember { mutableStateOf<List<Photo>>(emptyList()) }
+            var pendingExport by remember { mutableStateOf<Photo?>(null) }
 
             fun refresh() {
                 val id = ++requestId
@@ -90,6 +93,34 @@ class MainActivity : ComponentActivity() {
                         refresh()
                     } catch (e: Exception) { notice = e.message ?: "Photo action failed" }
                     finally { loading = false }
+                }
+            }
+
+            val exportPicker = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                val selected = pendingExport
+                pendingExport = null
+                val destination = result.data?.data
+                if (result.resultCode == Activity.RESULT_OK &&
+                    destination != null && selected != null
+                ) {
+                    if (!unlocked || view == LibraryView.TRASH || photos.none { it.id == selected.id }) {
+                        notice = "Unlock and select an active photo again"
+                    } else {
+                        loading = true
+                        scope.launch {
+                            try {
+                                val bytes = withContext(Dispatchers.IO) {
+                                    api.exportOriginal(selected, destination)
+                                }
+                                notice = "$bytes verified original bytes saved to the chosen document."
+                            } catch (e: Exception) {
+                                notice = (e.message ?: "Export failed") +
+                                    ". If your document provider created a partial file, review it."
+                            } finally { loading = false }
+                        }
+                    }
                 }
             }
 
@@ -152,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                     loading = true
                                     requestId++
                                     unlocked = false
+                                    pendingExport = null
                                     photos = emptyList()
                                     total = 0
                                     pageIndex = 0
@@ -278,6 +310,18 @@ class MainActivity : ComponentActivity() {
                                                     Text("Restore")
                                                 }
                                             } else {
+                                                OutlinedButton(
+                                                    enabled = !loading,
+                                                    onClick = {
+                                                        pendingExport = photo
+                                                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                                            .addCategory(Intent.CATEGORY_OPENABLE)
+                                                            .setType(photo.mediaType)
+                                                            .putExtra(Intent.EXTRA_TITLE, photo.name)
+                                                        exportPicker.launch(intent)
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) { Text("Save original") }
                                                 Row(Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween) {
                                                     TextButton(enabled = !loading,
