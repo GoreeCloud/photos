@@ -20,7 +20,7 @@
 | Background camera roll backup | No | N/A | N/A | Planned with consent |
 | E2EE / multi-user sharing / face recognition | No | No | No | No |
 
-The server stores media as content-addressed objects, generating EXIF-stripped JPEG thumbnails for valid images. Uploads use streaming SHA-256 checks and size limits. Originals retain their metadata; previews do not. The API restricts all media endpoints with bearer authentication and accepts only recognized JPEG, PNG, WebP, GIF, and basic MP4 signatures. MP4 is **not** yet fully validated by a media decoder; treat imported media as untrusted. There is no automatic public sharing or telemetry.
+The server stores media as content-addressed objects, generating EXIF-stripped JPEG thumbnails for valid images. Authenticated clients can batch-check up to 100 SHA-256 digests with `POST /v1/assets/lookup` before explicit uploads; matches include trashed records and do not restore or upload anything. Uploads use streaming SHA-256 checks and size limits. Originals retain their metadata; previews do not. The API restricts all media endpoints with bearer authentication and accepts only recognized JPEG, PNG, WebP, GIF, and basic MP4 signatures. MP4 is **not** yet fully validated by a media decoder; treat imported media as untrusted. There is no automatic public sharing or telemetry.
 
 ## Quick start (private development)
 
