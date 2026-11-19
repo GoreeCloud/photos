@@ -14,9 +14,9 @@
 | Image previews | Yes | Yes | Yes | Yes |
 | Favorites | Yes | Yes | Yes | Yes |
 | Reversible trash | Yes | Yes | Yes | Yes |
-| Albums and membership | Yes | Yes | Browse, create, add/remove members | Planned |
+| Albums and membership | Yes | Yes | Browse, create, add/remove members | Browse, create, add/remove members |
 | Filename search | Yes | Yes | Yes | Yes |
-| Original download / viewing | Yes | Yes | Download only | Planned |
+| Original download / viewing | Yes | Yes | Save original | User-directed verified original export |
 | Foreground, explicitly selected folder import with duplicate checks | Yes | N/A | N/A | Yes |
 | Background camera roll backup | No | N/A | N/A | Planned with consent |
 | E2EE / multi-user sharing / face recognition | No | No | No | No |
