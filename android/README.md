@@ -24,3 +24,7 @@ Direct selected-file uploads also enforce the 512 MiB media limit while streamin
 ## Native albums and membership
 
 The Android library now has a native album selector, **View album**, and user-directed **New album** creation. The selected album is an explicit destination for **Add to album** from the library, and **Remove from album** deletes only membership in the currently viewed album, never original media. The private backend serves album membership with bounded pages and filename filtering. Switching to All/Favorites/Trash leaves album view; the system never auto-shares media. There is no native rename/delete-album control yet. Album usability still requires real-device acceptance.
+
+## Native client network and session safeguards
+
+Authenticated API JSON bodies are capped at 4 MiB before buffering, and thumbnails retain the 6 MiB compressed / 2048-pixel dimension limits. User-initiated Lock invalidates the session synchronously on the UI thread before asynchronous remote revocation. Verified original exports reject a session invalidated during download or the subsequent user-selected document write; interruption may leave a partial provider document and is reported to the user. The required Android CI job runs JVM unit tests for bounded-response behavior in addition to assembling a debug APK.
