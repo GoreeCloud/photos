@@ -8,6 +8,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.security.MessageDigest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,16 +25,33 @@ data class Photo(
 enum class LibraryView { ALL, FAVORITES, TRASH }
 data class PhotosPage(val items: List<Photo>, val total: Int)
 
+/** Limit private API response allocation before reading the complete body. */
+internal fun readBounded(source: InputStream, maxBytes: Int): ByteArray {
+    require(maxBytes > 0)
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(65536)
+    source.use { input ->
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            check(output.size() + count <= maxBytes) { "Server response exceeds safe limit" }
+            output.write(buffer, 0, count)
+        }
+    }
+    return output.toByteArray()
+}
+
 /** Single-library API. Authentication lives only in process memory. */
 class PhotosApi(private val context: Context) {
     companion object {
         const val PAGE_SIZE = 40
         private const val MAX_ORIGINAL = 512L * 1024 * 1024
         private const val MAX_THUMBNAIL = 6L * 1024 * 1024
+        private const val MAX_JSON_BYTES = 4 * 1024 * 1024
     }
     var server: String = "http://127.0.0.1:8787"
         private set
-    private var token: String? = null
+    @Volatile private var token: String? = null
 
     fun configure(value: String) {
         val u = URL(value.trim().trimEnd('/'))
@@ -46,7 +64,9 @@ class PhotosApi(private val context: Context) {
         token = null
     }
 
-    private fun connection(path: String, method: String): HttpURLConnection {
+    private fun connection(
+        path: String, method: String, accessToken: String? = token
+    ): HttpURLConnection {
         val connection = (URL(server + path).openConnection() as HttpURLConnection)
         connection.requestMethod = method
         connection.connectTimeout = 12000
@@ -54,14 +74,14 @@ class PhotosApi(private val context: Context) {
         connection.useCaches = false
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
-        token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        accessToken?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
         return connection
     }
 
     private fun read(connection: HttpURLConnection): String {
         val status = connection.responseCode
         val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-        val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+        val body = stream?.let { String(readBounded(it, MAX_JSON_BYTES), Charsets.UTF_8) } ?: ""
         if (status !in 200..299) {
             val detail = try { JSONObject(body).optString("detail") } catch (_: Exception) { "" }
             throw IllegalStateException(if (detail.isNotBlank()) detail else "Server error $status")
@@ -79,12 +99,21 @@ class PhotosApi(private val context: Context) {
         } finally { conn.disconnect() }
     }
 
-    fun logout() {
-        try {
-            val conn = connection("/v1/session", "DELETE")
-            try { read(conn) } finally { conn.disconnect() }
-        } finally { token = null }
+    /** Immediately revoke local access before any potentially slow network I/O. */
+    fun clearSession(): String? {
+        val previous = token
+        token = null
+        return previous
     }
+
+    /** Finish remote revocation with the already-invalidated token. */
+    fun revokeSession(previous: String?) {
+        if (previous == null) return
+        val conn = connection("/v1/session", "DELETE", previous)
+        try { read(conn) } finally { conn.disconnect() }
+    }
+
+    fun logout() = revokeSession(clearSession())
 
     /** Server-paged library query, including trash. Does not scan device storage. */
     fun photosPage(
@@ -145,6 +174,7 @@ class PhotosApi(private val context: Context) {
                 temp.outputStream().use { sink ->
                     val buffer = ByteArray(65536)
                     while (true) {
+                        check(token == originalToken) { "Library locked during export" }
                         val count = source.read(buffer)
                         if (count < 0) break
                         downloaded += count
@@ -167,7 +197,15 @@ class PhotosApi(private val context: Context) {
             val output = resolver.openOutputStream(destination, "w")
                 ?: error("Cannot write the selected destination")
             output.use { sink ->
-                temp.inputStream().use { it.copyTo(sink, 65536) }
+                temp.inputStream().use { source ->
+                    val buffer = ByteArray(65536)
+                    while (true) {
+                        check(token == originalToken) { "Library locked during export" }
+                        val count = source.read(buffer)
+                        if (count < 0) break
+                        sink.write(buffer, 0, count)
+                    }
+                }
                 sink.flush()
             }
             return downloaded
@@ -183,19 +221,11 @@ class PhotosApi(private val context: Context) {
             val status = conn.responseCode
             if (status != 200) return null
             if (conn.contentLengthLong > MAX_THUMBNAIL) return null
-            val data = ByteArrayOutputStream()
-            conn.inputStream.use { stream ->
-                val buffer = ByteArray(65536)
-                var countTotal = 0L
-                while (true) {
-                    val count = stream.read(buffer)
-                    if (count == -1) break
-                    countTotal += count
-                    if (countTotal > MAX_THUMBNAIL) return null
-                    data.write(buffer, 0, count)
-                }
+            val bytes = try {
+                readBounded(conn.inputStream, MAX_THUMBNAIL.toInt())
+            } catch (_: IllegalStateException) {
+                return null
             }
-            val bytes = data.toByteArray()
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
             if (bounds.outWidth !in 1..2048 || bounds.outHeight !in 1..2048) return null
