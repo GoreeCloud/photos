@@ -22,7 +22,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Reques
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 Image.MAX_IMAGE_PIXELS = 50_000_000
 CHUNK = 1024 * 1024
@@ -143,6 +143,15 @@ class AlbumIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
 
+# Authenticated, bounded preflight for opt-in camera/folder imports.
+# Hashes reveal no contents; they are never accepted as proof of authorization.
+Sha256Hex = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+
+
+class HashLookupIn(BaseModel):
+    hashes: list[Sha256Hex] = Field(min_length=1, max_length=100)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or from_env()
     init_storage(settings)
@@ -231,6 +240,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 [*args, limit, offset],
             ).fetchall()
         return {"items": [asset_dict(row) for row in rows], "total": count}
+
+    @app.post("/v1/assets/lookup", dependencies=[Depends(authorized)])
+    def lookup_hashes(body: HashLookupIn):
+        """Returns indexed copies, including trashed assets; never implicitly restores."""
+        unique = sorted(set(body.hashes))
+        placeholders = ",".join("?" for _ in unique)
+        with database(settings) as db:
+            rows = db.execute(
+                f"SELECT id, sha256, deleted_at FROM assets WHERE sha256 IN ({placeholders})",
+                unique,
+            ).fetchall()
+        return {
+            "existing": [
+                {"sha256": row["sha256"], "id": row["id"], "trashed": row["deleted_at"] is not None}
+                for row in rows
+            ]
+        }
 
     @app.post("/v1/assets", status_code=201, dependencies=[Depends(authorized)])
     async def upload(file: Annotated[UploadFile, File()]):
