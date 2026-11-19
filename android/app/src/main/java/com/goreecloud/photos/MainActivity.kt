@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity() {
             var viewingAlbumId by remember { mutableStateOf<String?>(null) }
             var albumMenuOpen by remember { mutableStateOf(false) }
             var newAlbumName by remember { mutableStateOf("") }
+            var securityOpen by remember { mutableStateOf(false) }
+            var securityError by remember { mutableStateOf("") }
 
             fun refreshAlbums() {
                 scope.launch {
@@ -66,6 +68,47 @@ class MainActivity : ComponentActivity() {
                 }
             }
             var pendingExport by remember { mutableStateOf<Photo?>(null) }
+
+            fun clearPrivateView() {
+                requestId++
+                unlocked = false
+                securityOpen = false
+                securityError = ""
+                password = ""
+                pendingExport = null
+                photos = emptyList()
+                albums = emptyList()
+                pickedAlbum = null
+                viewingAlbumId = null
+                total = 0
+                pageIndex = 0
+                view = LibraryView.ALL
+                query = ""
+                activeSearch = ""
+            }
+
+            fun ownerSecurity(
+                rotate: Boolean, current: String, replacement: String = "",
+                confirmation: String = "",
+            ) {
+                loading = true
+                securityError = ""
+                requestId++
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            if (rotate) api.rotateLibraryPassword(current, replacement, confirmation)
+                            else api.revokeAllSessions(current)
+                        }
+                        api.clearSession()
+                        clearPrivateView()
+                        notice = if (rotate) "Password changed; all devices signed out."
+                            else "All devices signed out. Password unchanged."
+                    } catch (failure: Exception) {
+                        if (unlocked) securityError = failure.message ?: "Security action failed"
+                    } finally { loading = false }
+                }
+            }
 
             fun refresh() {
                 val id = ++requestId
@@ -201,6 +244,17 @@ class MainActivity : ComponentActivity() {
             }
 
             MaterialTheme {
+                if (securityOpen && unlocked) {
+                    OwnerSecurityDialog(
+                        busy = loading,
+                        error = securityError,
+                        onDismiss = { securityOpen = false; securityError = "" },
+                        onRotate = { current, replacement, confirmation ->
+                            ownerSecurity(true, current, replacement, confirmation)
+                        },
+                        onRevoke = { current -> ownerSecurity(false, current) },
+                    )
+                }
                 Scaffold(topBar = {
                     Surface(shadowElevation = 2.dp) {
                         Row(Modifier.fillMaxWidth().padding(16.dp),
@@ -212,18 +266,14 @@ class MainActivity : ComponentActivity() {
                                     Text("Refresh")
                                 }
                                 TextButton(enabled = !loading, onClick = {
+                                    securityError = ""
+                                    securityOpen = true
+                                }) { Text("Security") }
+                                TextButton(enabled = !loading, onClick = {
                                     // Deny local authorization now, before remote network I/O.
                                     val previousSession = api.clearSession()
                                     loading = true
-                                    requestId++
-                                    unlocked = false
-                                    pendingExport = null
-                                    photos = emptyList()
-                                    albums = emptyList()
-                                    pickedAlbum = null
-                                    viewingAlbumId = null
-                                    total = 0
-                                    pageIndex = 0
+                                    clearPrivateView()
                                     scope.launch {
                                         withContext(Dispatchers.IO) {
                                             runCatching { api.revokeSession(previousSession) }
