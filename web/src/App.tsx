@@ -67,6 +67,39 @@ export default function App() {
   const [selected, setSelected] = useState<Asset | null>(null);
   const [preview, setPreview] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const dialog = useRef<HTMLElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+
+  // A modal must receive keyboard focus, trap Tab, respond to Escape and restore
+  // focus to the originating photo card when dismissed.
+  useEffect(() => {
+    if (!selected) return;
+    closeButton.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSelected(null);
+      } else if (event.key === "Tab") {
+        const nodes = Array.from(dialog.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        ) ?? []);
+        if (!nodes.length) return;
+        const first = nodes[0]; const last = nodes[nodes.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (previousFocus.current?.isConnected) previousFocus.current.focus();
+      previousFocus.current = null;
+    };
+  }, [selected]);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -285,8 +318,12 @@ export default function App() {
           <span aria-live="polite">{total} total · {assets.length} shown</span></div>
         {assets.length ? <div className="photo-grid">
           {assets.map(asset => <article key={asset.id} className="photo-card">
-            <button className="photo-open" title={"Open " + asset.filename}
-              onClick={() => setSelected(asset)}>
+            <button className="photo-open" disabled={section === "trash"}
+              title={section === "trash" ? "Restore to preview" : "Open " + asset.filename}
+              onClick={() => {
+                previousFocus.current = document.activeElement as HTMLElement | null;
+                setSelected(asset);
+              }}>
               <Thumbnail token={token} asset={asset}/>
               <span className="card-title">{asset.filename}</span>
               <span className="card-date">{toDate(asset.created_at)} · {labelSize(asset.bytes)}</span>
@@ -330,9 +367,10 @@ export default function App() {
     {selected && <div className="modal-backdrop" role="presentation" onMouseDown={(e) => {
       if (e.target === e.currentTarget) setSelected(null);
     }}>
-      <section className="photo-dialog" role="dialog" aria-modal="true" aria-label={selected.filename}>
+      <section ref={dialog} className="photo-dialog" role="dialog" aria-modal="true"
+        aria-label={"Photo preview: " + selected.filename}>
         <div className="dialog-head"><strong>{selected.filename}</strong>
-          <button aria-label="Close preview" onClick={() => setSelected(null)}>✕</button></div>
+          <button ref={closeButton} aria-label="Close preview" onClick={() => setSelected(null)}>✕</button></div>
         <div className="dialog-body">{preview
           ? selected.media_type.startsWith("video/")
             ? <video controls src={preview} playsInline />
