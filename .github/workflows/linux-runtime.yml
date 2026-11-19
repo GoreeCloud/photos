@@ -1,0 +1,30 @@
+name: Native Linux Qt runtime acceptance (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-qt-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Qt native EGL prerequisites
+        timeout-minutes: 4
+        run: |
+          timeout 120s sudo apt-get update -qq -o Acquire::Retries=1
+          timeout 90s sudo apt-get install -y --no-install-recommends -o Acquire::Retries=2 libegl1 libopengl0 libxkbcommon0 libfontconfig1
+      - name: Qt Quick 6.12 actual QML offscreen startup
+        timeout-minutes: 3
+        run: |
+          python -m pip install --only-binary=:all: --disable-pip-version-check -r linux/requirements.txt
+          set +e
+          timeout 4s env QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python linux/main.py --server http://127.0.0.1:8787 > qt-smoke.log 2>&1
+          rc=$?
+          set -e
+          cat qt-smoke.log
+          # A valid GUI stays open until timeout; an import or QML error exits early.
+          test "$rc" -eq 124
