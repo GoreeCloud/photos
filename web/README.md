@@ -26,6 +26,8 @@ Private API JSON responses are stream-limited to **4 MiB**; thumbnails to **6 Mi
 
 ## Sign out all devices without rotating the password
 
+A disposable Chromium browser acceptance also exercises duplicate selection and confirms that an authenticated hash lookup occurs without a second media upload; it retains the original library count. The test uses only synthetic media.
+
 The unlocked web **Security** view provides a separate **Sign out all devices without changing password** button. It requires the current masked library password and calls the authenticated `POST /v1/settings/revoke-sessions` endpoint. On confirmed server revocation, the browser immediately clears its session and private library state; failed requests preserve the user's current session but clear the attempted current password field. This does not change the account password, recover access to a lost library, or implement multi-user identity. If a password may be compromised, use password rotation instead. Test the actual browser interaction and assistive technology before production.
 
 ## Reproducible real-browser security acceptance
@@ -47,3 +49,7 @@ This is automated Chromium UI acceptance, **not** a substitute for human keyboar
 ## Bounded duplicate checks for explicit web imports
 
 When you deliberately select files with **Add photos**, the browser computes a WebCrypto SHA-256 fingerprint **only for files from 1 byte through 16 MiB** and asks the authenticated Photos API `POST /v1/assets/lookup` if that exact content already exists. It skips matching originals, tells you how many were skipped, and warns when an existing copy is in Trash. Nothing is automatically restored from Trash and no local files are scanned outside the selected input. The hash is sent only to the configured private Photos API, not third-party analytics. Files larger than 16 MiB are not buffered for client-side checks: the server still hashes uploads incrementally and returns 409 on duplicates, which the UI treats as skipped without overwriting the original. Browser environments without WebCrypto fall back to server-side deduplication. Locking cancels pending browser uploads and stops queued files; already-received bytes may be processed by the server, so cancellation is best-effort. No background camera-roll access, file permission escalation or permanent hash cache is introduced.
+
+## Purpose-led photo timeline
+
+The unlocked web app now prioritizes a responsive, image-first media gallery, grouping each page's assets by the **UTC date of their import** rather than pretending to know an EXIF capture date. Grouping preserves backend page order; each section has a semantic heading and an item count. The original file's capture timestamp or GPS metadata are not indexed, geolocated, or sent elsewhere by this UI. Library and storage metrics remain available through an accessible, keyboard-operable **Library details** disclosure rather than dominating the photo canvas. The centralized GoreeCloud UI design tokens still govern color, typography and focus. See [purpose-led UI acceptance](../docs/UX.md). Verify small-screen photo crops, contrast, screen readers and real photo collections before a release.

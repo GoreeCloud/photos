@@ -40,6 +40,9 @@ with TestClient(app) as client:
         files={"file": ("browser-synthetic-only.png", image.getvalue(), "image/png")},
     )
     assert uploaded.status_code == 201, uploaded.text
+    duplicate_input = DATA / "synthetic-duplicate-selected.png"
+    duplicate_input.write_bytes(image.getvalue())
+    duplicate_input.chmod(0o600)
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { boundedBlob, boundedJson, PREVIEW_LIMIT, THUMB_LIMIT } from "./network";
 import { hashSmallFile } from "./import-preflight";
+import { groupImportsByUtcDay } from "./timeline";
 
 type Asset = {
   id: string; filename: string; media_type: string; bytes: number;
@@ -543,7 +544,9 @@ export default function App() {
             </button>
           </div>
         </div>
-        {stats && <section className="library-metrics" aria-label="Private library statistics">
+        {stats && <details className="library-metrics">
+          <summary>Library details · {stats.active.toLocaleString()} active items</summary>
+          <section aria-label="Private library statistics">
           <dl>
             <div><dt>Active items</dt><dd>{stats.active.toLocaleString()}</dd></div>
             <div><dt>Favorites</dt><dd>{stats.favorites.toLocaleString()}</dd></div>
@@ -555,7 +558,8 @@ export default function App() {
             {" · "}{labelSize(stats.remaining_bytes ?? 0)} remaining.
           </p>}
           <p>Storage includes originals in trash. Nothing is shared or analyzed automatically.</p>
-        </section>}
+          </section>
+        </details>}
         {albumId && <div className="album-commands" role="group" aria-label="Album actions">
           <button type="button" onClick={() => void renameAlbum()}>Rename album</button>
           <button type="button" onClick={() => void deleteAlbum()}>Delete album</button>
@@ -565,8 +569,16 @@ export default function App() {
           <button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></p>}
         <div className="section-head"><h2>{assets.length ? "Your collection" : "Nothing here yet"}</h2>
           <span aria-live="polite">{total} total · {assets.length} shown</span></div>
-        {assets.length ? <div className="photo-grid">
-          {assets.map(asset => <article key={asset.id} className="photo-card">
+        {assets.length ? <div className="photo-timeline">
+          {groupImportsByUtcDay(assets).map((group, index) =>
+            <section className="timeline-day" key={group.key}
+              aria-labelledby={"timeline-day-" + index}>
+              <div className="timeline-heading">
+                <h3 id={"timeline-day-" + index}>Imported {group.label} (UTC)</h3>
+                <span>{group.items.length} on this page</span>
+              </div>
+              <div className="photo-grid">
+                {group.items.map(asset => <article key={asset.id} className="photo-card">
             <button className="photo-open" disabled={section === "trash"}
               title={section === "trash" ? "Restore to preview" : "Open " + asset.filename}
               onClick={() => {
@@ -575,7 +587,7 @@ export default function App() {
               }}>
               <Thumbnail token={token} asset={asset}/>
               <span className="card-title">{asset.filename}</span>
-              <span className="card-date">{toDate(asset.created_at)} · {labelSize(asset.bytes)}</span>
+              <span className="card-date">{labelSize(asset.bytes)}</span>
             </button>
             <div className="card-actions">
               {section === "trash" ? <button onClick={() => void perform(asset, "restore")}>Restore</button> :
@@ -596,6 +608,8 @@ export default function App() {
               </>}
             </div>
           </article>)}
+              </div>
+            </section>)}
         </div> : <section className="empty">
           <div className="empty-symbol" aria-hidden="true">▧</div>
           <h3>Every memory begins somewhere.</h3>
