@@ -9,6 +9,7 @@ This is a development-stage self-hosted photo library. Capabilities below descri
 | Revoke all sessions without changing password | Implemented | Web Security control | Native Security dialog | Native Security dialog |
 | Explicit JPEG/PNG/WebP/GIF/MP4 uploads | Implemented | Implemented | Implemented | Implemented |
 | Private image thumbnails | Implemented | Implemented | Implemented | Implemented |
+| Photo-first adaptive gallery and UTC import-day sections | Original import timestamps available | Adaptive image tiles with import-day groups | Native photo grid (further polish planned) | Native photo grid (further polish planned) |
 | Favorites and reversible trash | Implemented | Implemented | Implemented | Implemented |
 | Filename search, filtering and pagination | Implemented | Implemented | Implemented | Implemented |
 | Restore from trash | Implemented | Implemented | Implemented | Implemented |
