@@ -18,7 +18,9 @@ ApplicationWindow {
         title: "Add a photo or video"
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Photos and videos (*.jpg *.jpeg *.png *.gif *.webp *.mp4)", "All files (*)"]
-        onAccepted: for (let file of selectedFiles) photosBridge.upload(file.toString())
+        onAccepted: {
+            for (let file of selectedFiles) photosBridge.upload(file.toString())
+        }
     }
 
     Connections {
@@ -45,7 +47,6 @@ ApplicationWindow {
             Layout.fillWidth: true
             color: palette.highlight
             wrapMode: Text.WordWrap
-            accessibleName: text
         }
 
         Item {
