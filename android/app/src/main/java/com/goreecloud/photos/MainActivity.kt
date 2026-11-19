@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -53,6 +54,8 @@ class MainActivity : ComponentActivity() {
             var newAlbumName by remember { mutableStateOf("") }
             var securityOpen by remember { mutableStateOf(false) }
             var securityError by remember { mutableStateOf("") }
+            var previewPhoto by remember { mutableStateOf<Photo?>(null) }
+            var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
             fun refreshAlbums() {
                 scope.launch {
@@ -76,6 +79,8 @@ class MainActivity : ComponentActivity() {
                 securityError = ""
                 password = ""
                 pendingExport = null
+                previewPhoto = null
+                previewBitmap = null
                 photos = emptyList()
                 albums = emptyList()
                 pickedAlbum = null
@@ -138,6 +143,8 @@ class MainActivity : ComponentActivity() {
             }
 
             fun chooseView(next: LibraryView) {
+                previewPhoto = null
+                previewBitmap = null
                 view = next
                 viewingAlbumId = null
                 pageIndex = 0
@@ -199,6 +206,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            fun saveOriginal(photo: Photo) {
+                if (!unlocked || view == LibraryView.TRASH) return
+                pendingExport = photo
+                val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                    .addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType(photo.mediaType)
+                    .putExtra(Intent.EXTRA_TITLE, photo.name)
+                exportPicker.launch(intent)
+            }
+
             val picker = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenMultipleDocuments()
             ) { selected ->
@@ -253,6 +270,33 @@ class MainActivity : ComponentActivity() {
                             ownerSecurity(true, current, replacement, confirmation)
                         },
                         onRevoke = { current -> ownerSecurity(false, current) },
+                    )
+                }
+                if (previewPhoto != null && unlocked) {
+                    val item = previewPhoto!!
+                    LaunchedEffect(item.id) {
+                        if (previewBitmap == null && item.mediaType.startsWith("image/")) {
+                            val expectedRequest = requestId
+                            val loaded = withContext(Dispatchers.IO) {
+                                runCatching { api.thumbnail(item.id) }.getOrNull()
+                            }
+                            if (unlocked && requestId == expectedRequest && previewPhoto?.id == item.id) {
+                                previewBitmap = loaded
+                            }
+                        }
+                    }
+                    PhotoPreviewDialog(
+                        photo = item,
+                        thumbnail = previewBitmap,
+                        onDismiss = {
+                            previewPhoto = null
+                            previewBitmap = null
+                        },
+                        onSaveOriginal = {
+                            previewPhoto = null
+                            previewBitmap = null
+                            saveOriginal(item)
+                        },
                     )
                 }
                 Scaffold(topBar = {
@@ -453,17 +497,36 @@ class MainActivity : ComponentActivity() {
                                                     runCatching { api.thumbnail(photo.id) }.getOrNull()
                                                 }
                                             }
-                                            if (thumb != null) Image(
-                                                bitmap = thumb!!.asImageBitmap(),
-                                                contentDescription = photo.name,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxWidth().height(136.dp)
-                                            ) else Box(
-                                                Modifier.fillMaxWidth().height(136.dp)
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                                contentAlignment = Alignment.Center
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                                                    .clickable(
+                                                        enabled = !loading && view != LibraryView.TRASH,
+                                                        onClickLabel = "Open preview of ${photo.name}",
+                                                    ) {
+                                                        previewPhoto = photo
+                                                        previewBitmap = thumb
+                                                    },
                                             ) {
-                                                Text(if (photo.mediaType.startsWith("video")) "Video" else "Photo")
+                                                if (thumb != null) {
+                                                    Image(
+                                                        bitmap = thumb!!.asImageBitmap(),
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                    )
+                                                } else {
+                                                    Box(
+                                                        modifier = Modifier.fillMaxSize().background(
+                                                            MaterialTheme.colorScheme.surfaceVariant
+                                                        ),
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
+                                                        Text(
+                                                            if (photo.mediaType.startsWith("video/"))
+                                                                "▶ Video" else "Photo preview unavailable"
+                                                        )
+                                                    }
+                                                }
                                             }
                                             Text(photo.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
@@ -486,14 +549,7 @@ class MainActivity : ComponentActivity() {
                                                 }
                                                 OutlinedButton(
                                                     enabled = !loading,
-                                                    onClick = {
-                                                        pendingExport = photo
-                                                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
-                                                            .addCategory(Intent.CATEGORY_OPENABLE)
-                                                            .setType(photo.mediaType)
-                                                            .putExtra(Intent.EXTRA_TITLE, photo.name)
-                                                        exportPicker.launch(intent)
-                                                    },
+                                                    onClick = { saveOriginal(photo) },
                                                     modifier = Modifier.fillMaxWidth()
                                                 ) { Text("Save original") }
                                                 Row(Modifier.fillMaxWidth(),
