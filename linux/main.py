@@ -1,18 +1,22 @@
 """GoreeCloud Photos Linux client: native Qt Quick 6.12, private in-memory sessions."""
 import argparse
 import json
+import os
+import re
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
 from PySide6.QtCore import QObject, Property, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QImage
-from PySide6.QtNetwork import QHttpMultiPart, QHttpPart, QNetworkAccessManager, QNetworkRequest
+from PySide6.QtNetwork import QHttpMultiPart, QHttpPart, QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickImageProvider
 from PySide6.QtCore import QFile, QIODevice
 
 ALLOWED_HTTP = {"localhost", "127.0.0.1", "::1"}
+MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 
 
 class ThumbnailProvider(QQuickImageProvider):
@@ -100,6 +104,10 @@ class Bridge(QObject):
 
     def send(self, method, path, payload=None, callback=None, content_type="application/json"):
         request = QNetworkRequest(QUrl(self.server + path))
+        request.setAttribute(
+            QNetworkRequest.Attribute.RedirectPolicyAttribute,
+            QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
+        )
         request.setRawHeader(b"Accept", b"application/json")
         if self._token:
             request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
@@ -181,6 +189,10 @@ class Bridge(QObject):
 
     def fetch_thumb(self, asset_id, generation):
         request = QNetworkRequest(QUrl(self.server + "/v1/assets/" + asset_id + "/thumbnail"))
+        request.setAttribute(
+            QNetworkRequest.Attribute.RedirectPolicyAttribute,
+            QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
+        )
         request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
         reply = self.manager.get(request)
         def done():
@@ -199,6 +211,104 @@ class Bridge(QObject):
     def restore(self, asset_id):
         self.send("POST", f"/v1/assets/{asset_id}/restore", callback=lambda _: self.refresh())
 
+    @Slot(str, str)
+    def download(self, asset_id, file_url):
+        """Private, bounded, streamed original; never replace an existing file."""
+        if (not self._token or self._view == "trash"
+                or not re.fullmatch(r"[0-9a-f-]{36}", asset_id)
+                or not any(item.get("id") == asset_id for item in self._items)):
+            self.error.emit("Choose an active photo from the unlocked library")
+            return
+        path = QUrl(file_url).toLocalFile()
+        if not path:
+            self.error.emit("Choose a local destination file")
+            return
+        target = Path(path).absolute()
+        if target.exists() or target.is_symlink():
+            self.error.emit("Destination already exists; choose a different filename")
+            return
+        if not target.parent.is_dir():
+            self.error.emit("Destination folder does not exist")
+            return
+        try:
+            handle = tempfile.NamedTemporaryFile(
+                mode="w+b", dir=target.parent, prefix=".photos-download-", delete=False,
+            )
+            os.fchmod(handle.fileno(), 0o600)
+        except OSError:
+            self.error.emit("Cannot open the selected destination folder")
+            return
+        temporary = Path(handle.name)
+        request = QNetworkRequest(
+            QUrl(self.server + "/v1/assets/" + asset_id + "/original")
+        )
+        request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
+        request.setAttribute(
+            QNetworkRequest.Attribute.RedirectPolicyAttribute,
+            QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
+        )
+        request.setTransferTimeout(90_000)
+        generation = self._generation
+        reply = self.manager.get(request)
+        reply.setReadBufferSize(2 * 1024 * 1024)
+        total = 0
+        failed = False
+
+        def read_data():
+            nonlocal total, failed
+            if failed:
+                return
+            if generation != self._generation or not self._token:
+                failed = True
+                reply.abort()
+                return
+            while reply.bytesAvailable() and not failed:
+                block = bytes(reply.read(min(1024 * 1024, reply.bytesAvailable())))
+                if not block:
+                    break
+                total += len(block)
+                if total > MAX_DOWNLOAD_BYTES:
+                    failed = True
+                    reply.abort()
+                    return
+                try:
+                    handle.write(block)
+                except OSError:
+                    failed = True
+                    reply.abort()
+                    return
+
+        def done():
+            read_data()
+            status = reply.attribute(
+                QNetworkRequest.Attribute.HttpStatusCodeAttribute
+            ) or 0
+            reply_error = reply.error()
+            reply.deleteLater()
+            try:
+                if (failed or generation != self._generation
+                        or status != 200 or reply_error != QNetworkReply.NetworkError.NoError):
+                    if generation == self._generation:
+                        self.error.emit("Original download was interrupted or rejected")
+                    return
+                handle.flush()
+                os.fsync(handle.fileno())
+                handle.close()
+                # Exclusive atomic promotion: never replace even if another
+                # application created the target while bytes were arriving.
+                os.link(temporary, target)
+                self.message.emit("Original saved privately to selected folder")
+            except FileExistsError:
+                self.error.emit("Destination already exists; no file was overwritten")
+            except OSError:
+                self.error.emit("Could not save the downloaded original")
+            finally:
+                handle.close()
+                temporary.unlink(missing_ok=True)
+
+        reply.readyRead.connect(read_data)
+        reply.finished.connect(done)
+
     @Slot(str)
     def upload(self, file_url):
         path = QUrl(file_url).toLocalFile()
@@ -211,6 +321,10 @@ class Bridge(QObject):
             return
         safe = Path(path).name.replace('"', "").replace("\r", "").replace("\n", "")
         request = QNetworkRequest(QUrl(self.server + "/v1/assets"))
+        request.setAttribute(
+            QNetworkRequest.Attribute.RedirectPolicyAttribute,
+            QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
+        )
         request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
         multipart = QHttpMultiPart(QHttpMultiPart.ContentType.FormDataType)
         part = QHttpPart()
