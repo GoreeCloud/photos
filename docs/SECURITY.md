@@ -19,6 +19,7 @@ The password hash is scrypt with a random per-library 16-byte salt. Session toke
 - Prefer one API instance against a single SQLite volume; multi-worker login-limiting is **not** shared.
 - Keep database and media directories mode 0700. Apply private volume backups and storage quotas.
 - Do not execute uploaded content; previews are decoded by Pillow, an untrusted media parser that requires timely updates.
+- Image uploads are rejected above 50 megapixels before full decoding. Identical concurrent uploads are serialized at the metadata transaction boundary so one succeeds and others receive a duplicate response.
 - The MP4 signature check is not a full decoder validation. An uploaded MP4 should not be processed by ffmpeg before an isolated media-processing sandbox exists.
 - Browser fetches authenticated originals to blob URLs for display; avoid opening very large videos on memory-constrained clients.
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.

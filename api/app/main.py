@@ -285,6 +285,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if media_type.startswith("image/"):
                 try:
                     with Image.open(temp_path) as img:
+                        if img.width * img.height > Image.MAX_IMAGE_PIXELS:
+                            raise HTTPException(413, "Image dimensions exceed 50 megapixels")
                         img.verify()
                 except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
                     raise HTTPException(415, "Invalid image") from None
@@ -293,6 +295,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             target = settings.data_dir / "objects" / digest[:2] / (digest + ext)
             target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             with database(settings) as db:
+                # Serialize checksum collision checks with insertion across concurrent workers.
+                # The exclusive writer lock is held only during the short metadata transaction.
+                db.execute("BEGIN IMMEDIATE")
                 existing = db.execute("SELECT id FROM assets WHERE sha256=?", (digest,)).fetchone()
                 if existing:
                     raise HTTPException(409, f"Duplicate file (asset {existing['id']})")
