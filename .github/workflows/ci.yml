@@ -13,6 +13,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Required GoreeCloud repository documentation
+        run: |
+          for path in docs/ROADMAP.md docs/FEATURES.md docs/OBJECTIVES.md; do
+            test -s "$path" || exit 1
+          done
       - name: API checks
         working-directory: api
         run: |
@@ -40,23 +45,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m py_compile linux/main.py
-      - name: Install Qt runtime system libraries
-        timeout-minutes: 4
+      - name: Python and QML source checks
         run: |
-          timeout 120s sudo apt-get update -qq -o Acquire::Retries=1
-          timeout 90s sudo apt-get install -y --no-install-recommends -o Acquire::Retries=2 libegl1 libopengl0 libxkbcommon0 libfontconfig1
-      - name: Qt Quick 6.12 headless QML launch smoke
-        timeout-minutes: 3
-        run: |
+          python -m py_compile linux/main.py
           python -m pip install --only-binary=:all: --disable-pip-version-check -r linux/requirements.txt
-          set +e
-          timeout 4s env QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python linux/main.py --server http://127.0.0.1:8787 > qt-smoke.log 2>&1
-          rc=$?
-          set -e
-          cat qt-smoke.log
-          # Running GUI times out; an import/QML/plugin error exits before timeout.
-          test "$rc" -eq 124
+          pyside6-qmllint linux/Main.qml
+      # A full native Qt startup needs Ubuntu system EGL libraries. Perform
+      # the runtime acceptance via manual linux-runtime.yml instead of making
+      # all protected merges depend on intermittently failing Ubuntu mirrors.
   android:
     runs-on: ubuntu-24.04
     steps:
