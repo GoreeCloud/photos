@@ -39,3 +39,8 @@ In an unlocked library, Android's **Security** dialog offers password rotation (
 The Compose top bar applies `Modifier.statusBarsPadding()` so library actions, particularly the Security and Lock controls, remain below the Android system status bar with edge-to-edge rendering enforced on modern Android. This was added after physical Android 16 testing exposed a visually rendered but touch-inaccessible top row. The full native UI must still undergo visual, TalkBack and responsive validation on representative screen sizes.
 
 The Android 16 physical-device Security dialog review also found that separate Material confirmation and dismissal slots caused the revoke/cancel controls to overlap. All three actions are now arranged as non-overlapping, full-width vertical buttons; physical retesting remains a required validation step.
+
+
+## Purpose-led, private photo preview
+
+The native library now prioritizes nearly square photo tiles. Tapping an active photo or video tile opens a native Compose preview dialog using the **authenticated EXIF-stripped JPEG thumbnail** already supported by the API (up to 512 pixels), with an explicit, user-selected **Save original** action through Android's system document picker. Videos show a labelled placeholder; in-app video playback, pinch-to-zoom and full-resolution original decoding are **not yet implemented**. The preview is held in process memory only, closes when the owner locks or revokes sessions, and never requests blanket media storage permission or scans other device folders. Actual TalkBack, dynamic-font and multi-screen acceptance remain open.
