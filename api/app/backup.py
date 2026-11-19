@@ -96,10 +96,13 @@ def add_file(tar: tarfile.TarFile, path: Path, member_name: str) -> None:
 def backup(data_dir: Path, output: Path) -> dict:
     root = data_dir.resolve(strict=True)
     target = output.absolute()
-    if target.exists():
-        raise FileExistsError("Backup destination already exists")
     if not target.parent.is_dir():
         raise FileNotFoundError("Backup destination parent does not exist")
+    # Canonicalize a symlinked destination parent before comparing with the library.
+    # Never permit the supposed off-library archive to resolve into live media.
+    target = target.parent.resolve(strict=True) / target.name
+    if target.exists() or target.is_symlink():
+        raise FileExistsError("Backup destination already exists")
     if target.is_relative_to(root):
         raise ValueError("Save backups outside the live photo library")
     db_path = safe_file(root, "photos.sqlite3")
@@ -127,6 +130,8 @@ def backup(data_dir: Path, output: Path) -> dict:
             {"format_version": 1, "sha256": checksums},
             sort_keys=True, separators=(",", ":")
         ).encode()
+        if len(manifest) > MAX_MANIFEST_BYTES:
+            raise ValueError("Backup manifest exceeds supported size")
         temp_archive: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -151,6 +156,87 @@ def backup(data_dir: Path, output: Path) -> dict:
         return {"files": len(files), "assets": len(originals), "archive": str(target)}
 
 
+MAX_ARCHIVE_FILES = 200_000
+MAX_ARCHIVE_TOTAL_BYTES = 16 * 1024**4
+
+
+def verify(archive: Path) -> dict:
+    """Read-only manifest, database and media verification. No restore is performed.
+
+    Archive input is untrusted. This checks path confinement, unique names, file
+    types, byte bounds, SHA-256, SQLite integrity, and indexed-original coverage.
+    The only local write is a temporary private copy of the archived SQLite DB.
+    """
+    with tarfile.open(archive, mode="r:") as tar:
+        members = tar.getmembers()
+        if len(members) > MAX_ARCHIVE_FILES:
+            raise ValueError("Archive contains too many files")
+        names = [m.name for m in members]
+        if (len(set(names)) != len(names)
+                or "manifest.json" not in names or "photos.sqlite3" not in names):
+            raise ValueError("Missing or duplicate required archive members")
+        if sum(m.size for m in members) > MAX_ARCHIVE_TOTAL_BYTES:
+            raise ValueError("Archive exceeds total size limit")
+        for member in members:
+            if not member.isfile() or not acceptable_name(member.name):
+                raise ValueError("Unsafe backup archive member")
+            if member.size < 0 or member.size > MAX_ARCHIVE_MEMBER_BYTES:
+                raise ValueError("Backup member exceeds file size limit")
+        manifest_member = tar.getmember("manifest.json")
+        if manifest_member.size > MAX_MANIFEST_BYTES:
+            raise ValueError("Manifest exceeds size limit")
+        manifest_stream = tar.extractfile(manifest_member)
+        if manifest_stream is None:
+            raise ValueError("Missing manifest content")
+        with manifest_stream:
+            manifest = json.load(manifest_stream)
+        if not isinstance(manifest, dict) or manifest.get("format_version") != 1:
+            raise ValueError("Unsupported backup format")
+        checksums = manifest.get("sha256")
+        if not isinstance(checksums, dict) or set(checksums) != set(names) - {"manifest.json"}:
+            raise ValueError("Manifest does not match archive contents")
+        if any(not isinstance(digest, str) or not SHA256.fullmatch(digest)
+               for digest in checksums.values()):
+            raise ValueError("Invalid manifest SHA-256")
+        with tempfile.TemporaryDirectory(prefix=".photos-verify-") as temp:
+            snapshot = Path(temp) / "photos.sqlite3"
+            for member in members:
+                if member.name == "manifest.json":
+                    continue
+                stream = tar.extractfile(member)
+                if stream is None:
+                    raise ValueError("Unreadable archive member")
+                digest = hashlib.sha256()
+                with stream:
+                    if member.name == "photos.sqlite3":
+                        with snapshot.open("xb") as destination:
+                            os.chmod(snapshot, 0o600)
+                            while chunk := stream.read(CHUNK):
+                                digest.update(chunk)
+                                destination.write(chunk)
+                    else:
+                        while chunk := stream.read(CHUNK):
+                            digest.update(chunk)
+                if digest.hexdigest() != checksums[member.name]:
+                    raise ValueError(f"Archive checksum mismatch: {member.name}")
+                if member.name.startswith("objects/") and (
+                    digest.hexdigest() != PurePosixPath(member.name).name[:64]
+                ):
+                    raise ValueError(f"Indexed original content mismatch: {member.name}")
+            sqlite_integrity(snapshot)
+            originals, previews = expected_objects(snapshot)
+            required = {"photos.sqlite3", *originals}
+            actual = set(checksums)
+            if not required.issubset(actual):
+                raise ValueError("Archive missing indexed media originals")
+            if actual - required - set(previews):
+                raise ValueError("Archive contains media not indexed by SQLite")
+        return {
+            "verified": True, "assets": len(originals),
+            "files": len(checksums), "archive": str(archive),
+        }
+
+
 def restore(archive: Path, data_dir: Path) -> dict:
     target = data_dir.absolute()
     if target.exists():
@@ -158,6 +244,8 @@ def restore(archive: Path, data_dir: Path) -> dict:
     target.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(archive, mode="r:") as tar:
         members = tar.getmembers()
+        if len(members) > MAX_ARCHIVE_FILES or sum(m.size for m in members) > MAX_ARCHIVE_TOTAL_BYTES:
+            raise ValueError("Archive exceeds file count or total size limit")
         names = [m.name for m in members]
         if len(set(names)) != len(names) or "manifest.json" not in names or "photos.sqlite3" not in names:
             raise ValueError("Incomplete or duplicate archive members")
@@ -202,9 +290,12 @@ def restore(archive: Path, data_dir: Path) -> dict:
                 if h.hexdigest() != checksums[m.name]:
                     raise ValueError(f"Backup checksum mismatch: {m.name}")
             sqlite_integrity(stage / "photos.sqlite3")
-            originals, _ = expected_objects(stage / "photos.sqlite3")
+            originals, previews = expected_objects(stage / "photos.sqlite3")
             if any(rel not in checksums for rel in originals):
                 raise ValueError("Backup missing indexed originals")
+            allowed = {"photos.sqlite3", *originals, *previews}
+            if set(checksums) - allowed:
+                raise ValueError("Archive contains unindexed media")
             for rel in originals:
                 if digest_file(stage / rel) != PurePosixPath(rel).name[:64]:
                     raise ValueError("Restored original hash mismatch")
@@ -218,13 +309,18 @@ def main() -> None:
     archive = sub.add_parser("backup", help="Stop the API first; export local unencrypted tar")
     archive.add_argument("--data-dir", type=Path, required=True)
     archive.add_argument("--output", type=Path, required=True)
+    check = sub.add_parser("verify", help="Verify checksums, SQLite index and media without restoring")
+    check.add_argument("--input", type=Path, required=True)
     recover = sub.add_parser("restore", help="Restore to a new empty directory")
     recover.add_argument("--input", type=Path, required=True)
     recover.add_argument("--data-dir", type=Path, required=True)
     args = parser.parse_args()
-    result = backup(args.data_dir, args.output) if args.command == "backup" else restore(
-        args.input, args.data_dir
-    )
+    if args.command == "backup":
+        result = backup(args.data_dir, args.output)
+    elif args.command == "verify":
+        result = verify(args.input)
+    else:
+        result = restore(args.input, args.data_dir)
     print(json.dumps(result, indent=2))
 
 
