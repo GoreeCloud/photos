@@ -15,3 +15,7 @@ Authenticated library statistics use `GET /v1/library/stats` to show active, fav
 
 
 If an administrator explicitly sets `PHOTOS_MAX_LIBRARY_BYTES`, the private storage summary reports quota usage and remaining original-media bytes. It tolerates older API responses without quota fields. Trashed originals count toward the configured allowance; this is not a physical disk-free-space estimate or an automatic purge.
+
+## Browser password rotation
+
+In an unlocked library, open **Security** to change its single-library password. The accessible, labelled password form requires the current password, a different 12–1024-character new password, and confirmation; it uses a bearer-authenticated `POST /v1/settings/password` without storing credentials or tokens in local storage. A successful response revokes all server sessions and immediately clears the browser's token, loaded media, previews, metrics, albums and password fields before showing the unlock view. The form focuses the first field on opening and supports Escape/Cancel to clear it. Failures retain the current session but clear the attempted current secret. This feature is **not** identity federation or multi-user access. Testing in a real browser and with assistive technology is a separate acceptance gate.

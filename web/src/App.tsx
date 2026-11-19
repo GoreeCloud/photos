@@ -76,6 +76,14 @@ export default function App() {
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const securityButton = useRef<HTMLButtonElement>(null);
+  const currentPasswordInput = useRef<HTMLInputElement>(null);
+  const sessionEpoch = useRef(0);
+  const [showSecurity, setShowSecurity] = useState(false);
+  const [currentSecret, setCurrentSecret] = useState("");
+  const [newSecret, setNewSecret] = useState("");
+  const [confirmSecret, setConfirmSecret] = useState("");
+  const [securityError, setSecurityError] = useState("");
 
   // A modal must receive keyboard focus, trap Tab, respond to Escape and restore
   // focus to the originating photo card when dismissed.
@@ -106,6 +114,90 @@ export default function App() {
       previousFocus.current = null;
     };
   }, [selected]);
+
+  useEffect(() => {
+    if (showSecurity) currentPasswordInput.current?.focus();
+  }, [showSecurity]);
+
+  function clearSecurityForm(restoreFocus = true) {
+    setShowSecurity(false);
+    setCurrentSecret("");
+    setNewSecret("");
+    setConfirmSecret("");
+    setSecurityError("");
+    if (restoreFocus) securityButton.current?.focus();
+  }
+
+  function clearPrivateSession(message = "") {
+    // Invalidate view requests before clearing state; never persist passwords.
+    ++requestNumber.current;
+    ++sessionEpoch.current;
+    setToken("");
+    setPassword("");
+    setBusy(false);
+    setSelected(null);
+    setPreview("");
+    setAssets([]);
+    setAlbums([]);
+    setStats(null);
+    setPage(0);
+    setTotal(0);
+    setAlbumId("");
+    setSearch("");
+    setSection("library");
+    clearSecurityForm(false);
+    setNotice(message);
+  }
+
+  function lockLibrary() {
+    const previousToken = token;
+    clearPrivateSession();
+    if (previousToken) {
+      void api(previousToken, "/v1/session", { method: "DELETE" })
+        .catch(() => undefined);
+    }
+  }
+
+  async function changeLibraryPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSecurityError("");
+    if (newSecret.length < 12 || newSecret.length > 1024) {
+      setSecurityError("The new password must contain 12–1024 characters.");
+      return;
+    }
+    if (newSecret === currentSecret) {
+      setSecurityError("Choose a new password different from the current one.");
+      return;
+    }
+    if (newSecret !== confirmSecret) {
+      setSecurityError("New password and confirmation do not match.");
+      return;
+    }
+    const epoch = sessionEpoch.current;
+    setBusy(true);
+    try {
+      const outcome = await api<{ changed: boolean; sessions_revoked: boolean }>(
+        token, "/v1/settings/password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            current_password: currentSecret, new_password: newSecret,
+          })
+        }
+      );
+      if (epoch !== sessionEpoch.current) return;
+      if (!outcome.changed || !outcome.sessions_revoked) {
+        throw new Error("Password update could not be confirmed.");
+      }
+      // The server revoked every bearer session. Clear private UI immediately.
+      clearPrivateSession("Password changed. All sessions were revoked. Sign in again.");
+    } catch (error) {
+      if (epoch === sessionEpoch.current) {
+        setSecurityError((error as Error).message || "Could not change password.");
+        setCurrentSecret("");
+      }
+    } finally { if (epoch === sessionEpoch.current) setBusy(false); }
+  }
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -292,14 +384,47 @@ export default function App() {
           <input type="search" placeholder="Search your library" value={search}
             onChange={(e) => { setPage(0); setSearch(e.target.value); }} />
         </label>
-        <button className="quiet" onClick={async () => {
-          await api(token, "/v1/session", { method: "DELETE" }).catch(() => undefined);
-          requestNumber.current += 1;
-          setToken(""); setSelected(null); setAssets([]); setAlbums([]); setPage(0); setTotal(0);
-          setStats(null);
-        }}>Lock</button>
+        <button ref={securityButton} type="button" className="quiet"
+          aria-expanded={showSecurity} aria-controls="library-security-settings"
+          onClick={() => {
+            if (showSecurity) clearSecurityForm();
+            else { setShowSecurity(true); setSecurityError(""); }
+          }}>
+          {showSecurity ? "Close settings" : "Security"}
+        </button>
+        <button className="quiet" type="button" onClick={lockLibrary}>Lock</button>
       </header>
       <div className="content">
+        {showSecurity && <section className="security-settings" id="library-security-settings"
+          aria-labelledby="security-settings-title"
+          onKeyDown={(event) => { if (event.key === "Escape") clearSecurityForm(); }}>
+          <h2 id="security-settings-title">Change library password</h2>
+          <p>For security, every signed-in device will need to unlock again. This app does not save your password.</p>
+          <form onSubmit={(event) => void changeLibraryPassword(event)} autoComplete="off">
+            <label htmlFor="photos-current-secret">Current password</label>
+            <input ref={currentPasswordInput} id="photos-current-secret" type="password"
+              autoComplete="current-password" required value={currentSecret}
+              onChange={(event) => setCurrentSecret(event.target.value)} />
+            <label htmlFor="photos-new-secret">New password</label>
+            <input id="photos-new-secret" type="password" autoComplete="new-password"
+              required minLength={12} maxLength={1024} value={newSecret}
+              aria-describedby="photos-password-rule"
+              onChange={(event) => setNewSecret(event.target.value)} />
+            <p id="photos-password-rule" className="security-hint">12–1024 characters; choose a unique password.</p>
+            <label htmlFor="photos-confirm-secret">Confirm new password</label>
+            <input id="photos-confirm-secret" type="password" autoComplete="new-password"
+              required value={confirmSecret} onChange={(event) => setConfirmSecret(event.target.value)} />
+            {securityError && <p role="alert" className="security-error">{securityError}</p>}
+            <div className="security-actions">
+              <button type="submit" className="primary" disabled={busy || !currentSecret || !newSecret || !confirmSecret}>
+                {busy ? "Changing password…" : "Change password and revoke sessions"}
+              </button>
+              <button type="button" className="quiet" disabled={busy} onClick={() => clearSecurityForm()}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>}
         <div className="hero">
           <div>
             <p className="eyebrow">MEMORIES, IN YOUR HANDS</p>
