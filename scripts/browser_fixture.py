@@ -5,11 +5,12 @@ import os
 import tempfile
 from pathlib import Path
 
-from app.main import Settings, create_app
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 from PIL import Image
+
+from app.main import Settings, create_app
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web" / "dist"
