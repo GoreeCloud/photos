@@ -17,6 +17,7 @@
 | Albums and membership | Yes | Yes | Planned | Planned |
 | Filename search | Yes | Yes | Planned | Planned |
 | Original download / viewing | Yes | Yes | Planned | Planned |
+| Foreground, explicitly selected folder import with duplicate checks | Yes | N/A | N/A | Yes |
 | Background camera roll backup | No | N/A | N/A | Planned with consent |
 | E2EE / multi-user sharing / face recognition | No | No | No | No |
 
