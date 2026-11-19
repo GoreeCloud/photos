@@ -113,6 +113,20 @@ async def check_browser(app_url: str, cdp_url: str):
             'document.body.innerText.includes("browser-synthetic-only.png")',
             "synthetic gallery",
         )
+        assert await browser.js(
+            'document.querySelectorAll(".timeline-day").length===1'
+        )
+        assert await browser.js(
+            'document.querySelector(".timeline-heading h3")?.textContent?.startsWith("Imported ")'
+        )
+        assert await browser.js(
+            'document.querySelector("details.library-metrics")?.open===false'
+        )
+        assert await browser.js(
+            '(() => { const info=document.querySelector("details.library-metrics");'
+            ' info.querySelector("summary").click(); return info.open; })()'
+        )
+        print("PASS: UTC import timeline and accessible library details disclosure", flush=True)
         print("PASS: Chromium login and synthetic gallery", flush=True)
         await browser.click("Security")
         await browser.wait(
