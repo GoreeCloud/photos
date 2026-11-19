@@ -131,6 +131,7 @@ ApplicationWindow {
 
     Dialog {
         id: previewDialog
+        objectName: "privatePhotoPreview"
         title: window.previewName
         modal: true
         focus: true
