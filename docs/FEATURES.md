@@ -11,7 +11,7 @@ This is a development-stage self-hosted photo library. Capabilities below descri
 | Filename search, filtering and pagination | Implemented | Implemented | Implemented | Implemented |
 | Restore from trash | Implemented | Implemented | Implemented | Implemented |
 | Albums | Full create/rename/delete/membership API | Create, rename, delete, add/remove | Not yet | Not yet |
-| Original media read and partial-byte streaming | Implemented | Download/preview | Not yet | Not yet |
+| Original media read and partial-byte streaming | Implemented | Download/preview | User-directed private Save original | User-directed SAF export with SHA-256 verification |
 | Duplicate preflight by SHA-256 | Implemented | Not yet | Not yet | Used in explicit folder import |
 | Explicit folder import | Via ordinary uploads | File chooser only | File picker only | System document-tree picker, foreground-only |
 | Offline backup and restore | Manual unencrypted CLI plus read-only verifier | Not applicable | Not applicable | Not applicable |

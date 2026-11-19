@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
+import java.io.File
+import java.security.MessageDigest
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -15,7 +17,7 @@ import java.util.UUID
 
 data class Photo(
     val id: String, val name: String, val mediaType: String,
-    val favorite: Boolean, val bytes: Long
+    val favorite: Boolean, val bytes: Long, val sha256: String
 )
 
 enum class LibraryView { ALL, FAVORITES, TRASH }
@@ -23,7 +25,10 @@ data class PhotosPage(val items: List<Photo>, val total: Int)
 
 /** Single-library API. Authentication lives only in process memory. */
 class PhotosApi(private val context: Context) {
-    companion object { const val PAGE_SIZE = 40 }
+    companion object {
+        const val PAGE_SIZE = 40
+        private const val MAX_ORIGINAL = 512L * 1024 * 1024
+    }
     var server: String = "http://127.0.0.1:8787"
         private set
     private var token: String? = null
@@ -96,10 +101,78 @@ class PhotosApi(private val context: Context) {
             val items = (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 Photo(obj.getString("id"), obj.getString("filename"),
-                    obj.getString("media_type"), obj.getBoolean("favorite"), obj.getLong("bytes"))
+                    obj.getString("media_type"), obj.getBoolean("favorite"),
+                    obj.getLong("bytes"), obj.getString("sha256"))
             }
             return PhotosPage(items, body.getInt("total"))
         } finally { conn.disconnect() }
+    }
+
+    /**
+     * Foreground-only export of one authenticated original.
+     *
+     * First downloads and verifies the complete original in app-private cache.
+     * Only afterwards opens the explicit system document-picker destination.
+     * A failed provider write may leave a partial user-chosen document; it is
+     * never silently deleted, so the user can inspect/recover their destination.
+     */
+    fun exportOriginal(photo: Photo, destination: Uri): Long {
+        val originalToken = token ?: error("Unlock the library before exporting")
+        require(UUID.fromString(photo.id).toString() == photo.id) { "Invalid photo ID" }
+        require(photo.bytes in 1..MAX_ORIGINAL) { "Original exceeds the export limit" }
+        require(Regex("^[0-9a-f]{64}$").matches(photo.sha256)) {
+            "Invalid media checksum"
+        }
+        val conn = connection("/v1/assets/${photo.id}/original", "GET")
+        val temp = try {
+            File.createTempFile("photos-private-export-", ".part", context.cacheDir)
+        } catch (failure: Exception) {
+            conn.disconnect()
+            throw failure
+        }
+        conn.readTimeout = 120000
+        conn.setRequestProperty("Accept", "application/octet-stream")
+        try {
+            val status = conn.responseCode
+            if (status != 200) error("Original is unavailable (HTTP $status)")
+            val length = conn.contentLengthLong
+            if (length > MAX_ORIGINAL || length > photo.bytes) error("Unexpected original size")
+            val digest = MessageDigest.getInstance("SHA-256")
+            var downloaded = 0L
+            conn.inputStream.use { source ->
+                temp.outputStream().use { sink ->
+                    val buffer = ByteArray(65536)
+                    while (true) {
+                        val count = source.read(buffer)
+                        if (count < 0) break
+                        downloaded += count
+                        if (downloaded > MAX_ORIGINAL || downloaded > photo.bytes) {
+                            error("Original exceeds expected size")
+                        }
+                        digest.update(buffer, 0, count)
+                        sink.write(buffer, 0, count)
+                    }
+                }
+            }
+            if (length >= 0 && downloaded != length) error("Incomplete original download")
+            if (downloaded != photo.bytes) error("Original size verification failed")
+            val checksum = digest.digest().joinToString("") {
+                "%02x".format(it.toInt() and 0xff)
+            }
+            if (checksum != photo.sha256) error("Original checksum verification failed")
+            if (token != originalToken) error("Library was locked while exporting")
+            val resolver = context.contentResolver
+            val output = resolver.openOutputStream(destination, "w")
+                ?: error("Cannot write the selected destination")
+            output.use { sink ->
+                temp.inputStream().use { it.copyTo(sink, 65536) }
+                sink.flush()
+            }
+            return downloaded
+        } finally {
+            conn.disconnect()
+            temp.delete()
+        }
     }
 
     fun thumbnail(id: String): Bitmap? {
