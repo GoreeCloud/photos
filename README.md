@@ -33,6 +33,8 @@ The server stores media as content-addressed objects, generating EXIF-stripped J
 
 The React Vite development proxy forwards the media API to localhost:8787. For a production reverse proxy, serve the web bundle and forward `/v1` to the API under the same HTTPS origin. Set `VITE_PHOTOS_API_URL` at build time if using separate domains, and configure explicit `PHOTOS_CORS_ORIGINS` accordingly.
 
+Optionally set `PHOTOS_MAX_LIBRARY_BYTES` to a **positive integer byte limit**. The server then rejects uploads that would exceed the total indexed original-media bytes, including items in trash; it does not delete or compress existing files. Database, previews and transient upload bytes consume additional disk space, so this quota is **not** a disk-free-space guarantee. The authenticated stats endpoint reports the configured limit and remaining allowance. Unset means unlimited at application level.
+
 For a single-host container trial, run `docker compose up --build` with `PHOTOS_ADMIN_PASSWORD` set privately. Compose binds the API on **127.0.0.1:8787 only**; it does not expose a public web server or TLS. Do not publish the port without HTTPS and an access-controlled gateway.
 
 ### Linux app

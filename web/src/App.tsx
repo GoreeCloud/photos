@@ -8,6 +8,7 @@ type Album = { id: string; name: string; count: number };
 type LibraryStats = {
   total: number; active: number; trashed: number; favorites: number;
   images: number; videos: number; original_bytes: number; albums: number;
+  quota_bytes?: number | null; remaining_bytes?: number | null;
 };
 const ENDPOINT = import.meta.env.VITE_PHOTOS_API_URL ?? "";
 const PAGE_SIZE = 36;
@@ -322,6 +323,10 @@ export default function App() {
             <div><dt>In trash</dt><dd>{stats.trashed.toLocaleString()}</dd></div>
             <div><dt>Stored originals</dt><dd>{labelSize(stats.original_bytes)}</dd></div>
           </dl>
+          {stats.quota_bytes != null && <p aria-live="polite">
+            Library quota: {labelSize(stats.original_bytes)} of {labelSize(stats.quota_bytes)}
+            {" · "}{labelSize(stats.remaining_bytes ?? 0)} remaining.
+          </p>}
           <p>Storage includes originals in trash. Nothing is shared or analyzed automatically.</p>
         </section>}
         {albumId && <div className="album-commands" role="group" aria-label="Album actions">

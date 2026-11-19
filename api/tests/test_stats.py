@@ -26,6 +26,7 @@ def test_private_stats_and_ranges(tmp_path):
         assert empty.json() == {
             "total": 0, "active": 0, "trashed": 0, "favorites": 0,
             "images": 0, "videos": 0, "original_bytes": 0, "albums": 0,
+            "quota_bytes": None, "remaining_bytes": None,
         }
         assert client.post("/v1/albums", json={"name": "Demo"}, headers=headers).status_code == 201
         png = image_bytes()
@@ -48,6 +49,7 @@ def test_private_stats_and_ranges(tmp_path):
         assert stat == {
             "total": 2, "active": 1, "trashed": 1, "favorites": 1,
             "images": 1, "videos": 1, "original_bytes": len(png) + len(mp4), "albums": 1,
+            "quota_bytes": None, "remaining_bytes": None,
         }
         assert "filename" not in stat and "sha256" not in stat
         url = f"/v1/assets/{image_id}/original"

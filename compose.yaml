@@ -8,6 +8,7 @@ services:
       PHOTOS_DATA_DIR: /data
       PHOTOS_ADMIN_PASSWORD: ${PHOTOS_ADMIN_PASSWORD:?Set a unique password of 12+ characters in a private environment}
       PHOTOS_CORS_ORIGINS: ${PHOTOS_CORS_ORIGINS:-http://localhost:5173}
+      PHOTOS_MAX_LIBRARY_BYTES: ${PHOTOS_MAX_LIBRARY_BYTES:-}
     volumes:
       - photos_data:/data
     read_only: true
