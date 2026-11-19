@@ -44,6 +44,10 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 ## Pre-release gates
 Run Python tests, static lint, web build, Qt QML runtime check, Android emulator/device test, authorization and file-handling fuzzing, vulnerability scans, license scan, backup/restore drill, and HTTPS ingress verification before production use.
 
+### Offline live-library verification
+
+A read-only `photosctl verify-library --data-dir ...` audit checks the existing SQLite index against on-disk originals, hashes and stray files, without deleting or repairing content. Stop the API and all writers before verification: it does not provide an atomic cross-file snapshot of a running library. No personal media names or digests are written to verification results.
+
 ## Android session and response controls
 
 Android metadata JSON fetches are bounded to 4 MiB, and thumbnails retain the compressed 6 MiB and decoded 2048-pixel dimension limits. Lock invalidates the local bearer token synchronously before remote revocation and in-progress exports check session continuity. This does not replace device-level authorization, device testing, or server-side controls.

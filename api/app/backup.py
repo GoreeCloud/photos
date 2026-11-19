@@ -44,7 +44,7 @@ def sqlite_integrity(path: Path) -> None:
 def expected_objects(db_path: Path) -> tuple[list[str], list[str]]:
     originals: list[str] = []
     previews: list[str] = []
-    with sqlite3.connect(db_path) as db:
+    with sqlite3.connect(f"file:{db_path.as_uri()[7:]}?mode=ro", uri=True) as db:
         for asset_id, sha, media in db.execute(
             "SELECT id, sha256, media_type FROM assets ORDER BY sha256"
         ):
@@ -91,6 +91,74 @@ def add_file(tar: tarfile.TarFile, path: Path, member_name: str) -> None:
         meta.mode = 0o600
         meta.mtime = 0
         tar.addfile(meta, handle)
+
+
+def verify_library(data_dir: Path) -> dict:
+    """Read-only offline check of indexed originals and private library structure.
+
+    Stop API writers first. A single SQLite read-only scan cannot guarantee a
+    cross-file snapshot while uploads or deletes are concurrently in progress.
+    Do not mutate, delete or silently recover any library file.
+    """
+    root = data_dir.resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError("Library path is not a directory")
+    db_file = safe_file(root, "photos.sqlite3")
+    sqlite_integrity(db_file)
+    originals, previews = expected_objects(db_file)
+    if len(originals) > MAX_ARCHIVE_FILES:
+        raise ValueError("Library contains too many indexed originals")
+    total_bytes = 0
+    expected = set(originals)
+    for rel in originals:
+        try:
+            media = safe_file(root, rel)
+        except (OSError, ValueError) as error:
+            raise ValueError("Indexed original is missing or unsafe") from error
+        if digest_file(media) != PurePosixPath(rel).name[:64]:
+            raise ValueError("Indexed original checksum mismatch")
+        total_bytes += media.stat().st_size
+    # Leftover unindexed content may indicate interrupted uploads, storage drift,
+    # or deletion outside the API. Report without deleting or exposing filenames.
+    objects_dir = root / "objects"
+    if objects_dir.is_symlink() or not objects_dir.is_dir():
+        raise ValueError("Original media directory is unsafe or missing")
+    count = 0
+    for entry in objects_dir.rglob("*"):
+        if entry.is_symlink():
+            raise ValueError("Library contains unsafe media symlinks")
+        if entry.is_file():
+            count += 1
+            if count > MAX_ARCHIVE_FILES:
+                raise ValueError("Library contains too many original objects")
+            if entry.relative_to(root).as_posix() not in expected:
+                raise ValueError("Library contains unindexed original files")
+    if count != len(expected):
+        raise ValueError("Library media index and objects do not match")
+    previews_dir = root / "previews"
+    if previews_dir.is_symlink() or not previews_dir.is_dir():
+        raise ValueError("Thumbnail directory is unsafe or missing")
+    preview_count = 0
+    expected_previews = set(previews)
+    for entry in previews_dir.rglob("*"):
+        if entry.is_symlink():
+            raise ValueError("Library contains unsafe thumbnail symlinks")
+        if entry.is_file() and entry.relative_to(root).as_posix() not in expected_previews:
+            raise ValueError("Library contains unindexed thumbnails")
+    for rel in previews:
+        thumbnail = root / rel
+        if thumbnail.is_symlink():
+            raise ValueError("Library contains unsafe thumbnail symlinks")
+        if thumbnail.exists():
+            safe_file(root, rel)
+            preview_count += 1
+    return {
+        "verified": True,
+        "assets": len(originals),
+        "original_bytes": total_bytes,
+        "previews": preview_count,
+        "missing_previews": len(previews) - preview_count,
+    }
 
 
 def backup(data_dir: Path, output: Path) -> dict:
@@ -309,6 +377,8 @@ def main() -> None:
     archive = sub.add_parser("backup", help="Stop the API first; export local unencrypted tar")
     archive.add_argument("--data-dir", type=Path, required=True)
     archive.add_argument("--output", type=Path, required=True)
+    live_check = sub.add_parser("verify-library", help="Check a stopped local library, read-only")
+    live_check.add_argument("--data-dir", type=Path, required=True)
     check = sub.add_parser("verify", help="Verify checksums, SQLite index and media without restoring")
     check.add_argument("--input", type=Path, required=True)
     recover = sub.add_parser("restore", help="Restore to a new empty directory")
@@ -317,6 +387,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "backup":
         result = backup(args.data_dir, args.output)
+    elif args.command == "verify-library":
+        result = verify_library(args.data_dir)
     elif args.command == "verify":
         result = verify(args.input)
     else:
