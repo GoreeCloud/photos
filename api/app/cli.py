@@ -220,6 +220,8 @@ def parse_args(argv: list[str] | None = None):
     bk = sub.add_parser("backup", help="Create an offline unencrypted backup with API stopped")
     bk.add_argument("--data-dir", required=True, type=Path)
     bk.add_argument("--output", required=True, type=Path)
+    live = sub.add_parser("verify-library", help="Read-only offline integrity check of local data")
+    live.add_argument("--data-dir", required=True, type=Path)
     verify = sub.add_parser("verify-backup", help="Read-only archive integrity check")
     verify.add_argument("--input", required=True, type=Path)
     restore_bk = sub.add_parser("restore-backup", help="Recover to a new, nonexistent data folder")
@@ -231,6 +233,8 @@ def parse_args(argv: list[str] | None = None):
 def run(args):
     if args.command == "backup":
         return offline.backup(args.data_dir, args.output)
+    if args.command == "verify-library":
+        return offline.verify_library(args.data_dir)
     if args.command == "verify-backup":
         return offline.verify(args.input)
     if args.command == "restore-backup":
