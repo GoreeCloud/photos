@@ -157,3 +157,30 @@ def test_cli_entrypoint_declares_version(capsys):
         cli.parse_args(["--version"])
     assert exc.value.code == 0
     assert "GoreeCloud Photos" in capsys.readouterr().out
+
+
+def test_cli_offline_archive_verify_and_isolated_restore(tmp_path, capsys, monkeypatch):
+    from test_backup import seed_library
+
+    monkeypatch.delenv("PHOTOS_ACCESS_TOKEN", raising=False)
+    home = tmp_path / "library"
+    seed_library(home)
+    archive = tmp_path / "backup.tar"
+    dest = tmp_path / "restored"
+    assert cli.main(["backup", "--data-dir", str(home), "--output", str(archive)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["assets"] == 1
+    assert cli.main(["verify-backup", "--input", str(archive)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["verified"] is True
+    assert report["assets"] == 1
+    assert not dest.exists()
+    assert cli.main(
+        ["restore-backup", "--input", str(archive), "--data-dir", str(dest)]
+    ) == 0
+    assert json.loads(capsys.readouterr().out)["assets"] == 1
+    assert (dest / "photos.sqlite3").is_file()
+    assert cli.main(
+        ["restore-backup", "--input", str(archive), "--data-dir", str(dest)]
+    ) == 2
+    assert "nonexistent data directory" in capsys.readouterr().err.lower()
