@@ -23,6 +23,7 @@ data class Photo(
 
 enum class LibraryView { ALL, FAVORITES, TRASH }
 data class PhotosPage(val items: List<Photo>, val total: Int)
+data class Album(val id: String, val name: String, val count: Int)
 
 /** Single-library API. Authentication lives only in process memory. */
 class PhotosApi(private val context: Context) {
@@ -175,6 +176,76 @@ class PhotosApi(private val context: Context) {
             conn.disconnect()
             temp.delete()
         }
+    }
+
+    private fun canonicalId(id: String): String {
+        require(UUID.fromString(id).toString() == id) { "Invalid album or photo ID" }
+        return id
+    }
+
+    /** Read and edit private album membership; never deletes any original. */
+    fun albums(): List<Album> {
+        val conn = connection("/v1/albums", "GET")
+        try {
+            val rows = JSONObject(read(conn)).getJSONArray("items")
+            return (0 until rows.length()).map { index ->
+                val item = rows.getJSONObject(index)
+                Album(
+                    canonicalId(item.getString("id")),
+                    item.getString("name"), item.getInt("count")
+                )
+            }
+        } finally { conn.disconnect() }
+    }
+
+    fun createAlbum(name: String): Album {
+        val trimmed = name.trim()
+        require(trimmed.length in 1..100) { "Album name must be 1-100 characters" }
+        val conn = connection("/v1/albums", "POST")
+        try {
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.use {
+                it.write(JSONObject().put("name", trimmed).toString().toByteArray())
+            }
+            val result = JSONObject(read(conn))
+            return Album(canonicalId(result.getString("id")), result.getString("name"), 0)
+        } finally { conn.disconnect() }
+    }
+
+    fun albumPhotos(albumId: String, search: String = "", page: Int = 0): PhotosPage {
+        canonicalId(albumId)
+        require(page in 0..25000)
+        require(search.length <= 128)
+        val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
+        val path = "/v1/albums/$albumId/assets?limit=$PAGE_SIZE" +
+            "&offset=${page * PAGE_SIZE}&search=$encoded"
+        val conn = connection(path, "GET")
+        try {
+            val data = JSONObject(read(conn))
+            val records = data.getJSONArray("items")
+            val result = (0 until records.length()).map { index ->
+                val item = records.getJSONObject(index)
+                Photo(item.getString("id"), item.getString("filename"),
+                    item.getString("media_type"), item.getBoolean("favorite"),
+                    item.getLong("bytes"), item.getString("sha256"))
+            }
+            return PhotosPage(result, data.getInt("total"))
+        } finally { conn.disconnect() }
+    }
+
+    fun addToAlbum(albumId: String, photoId: String) {
+        canonicalId(albumId)
+        canonicalId(photoId)
+        val conn = connection("/v1/albums/$albumId/assets/$photoId", "POST")
+        try { read(conn) } finally { conn.disconnect() }
+    }
+
+    fun removeFromAlbum(albumId: String, photoId: String) {
+        canonicalId(albumId)
+        canonicalId(photoId)
+        val conn = connection("/v1/albums/$albumId/assets/$photoId", "DELETE")
+        try { read(conn) } finally { conn.disconnect() }
     }
 
     fun thumbnail(id: String): Bitmap? {

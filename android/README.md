@@ -19,3 +19,8 @@ Each active photo/video has a **Save original** control that launches the operat
 ## Bounded media ingest and previews
 
 Direct selected-file uploads also enforce the 512 MiB media limit while streaming from Android's document provider. Authentication is required; the client never auto-scans the gallery. Image thumbnails are limited to 6 MiB of compressed bytes and 2048 pixels per axis before decoding, reducing the impact of unexpected or malicious responses from a misconfigured server. This is defense in depth, not a substitute for hardened server-side image handling or a decoder sandbox.
+
+
+## Native albums and membership
+
+The Android library now has a native album selector, **View album**, and user-directed **New album** creation. The selected album is an explicit destination for **Add to album** from the library, and **Remove from album** deletes only membership in the currently viewed album, never original media. The private backend serves album membership with bounded pages and filename filtering. Switching to All/Favorites/Trash leaves album view; the system never auto-shares media. There is no native rename/delete-album control yet. Album usability still requires real-device acceptance.

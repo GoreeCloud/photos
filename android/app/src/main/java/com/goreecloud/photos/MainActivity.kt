@@ -46,6 +46,25 @@ class MainActivity : ComponentActivity() {
             var total by remember { mutableIntStateOf(0) }
             var requestId by remember { mutableIntStateOf(0) }
             var photos by remember { mutableStateOf<List<Photo>>(emptyList()) }
+            var albums by remember { mutableStateOf<List<Album>>(emptyList()) }
+            var pickedAlbum by remember { mutableStateOf<Album?>(null) }
+            var viewingAlbumId by remember { mutableStateOf<String?>(null) }
+            var albumMenuOpen by remember { mutableStateOf(false) }
+            var newAlbumName by remember { mutableStateOf("") }
+
+            fun refreshAlbums() {
+                scope.launch {
+                    try {
+                        val result = withContext(Dispatchers.IO) { api.albums() }
+                        if (unlocked) {
+                            albums = result
+                            pickedAlbum = result.find { it.id == pickedAlbum?.id }
+                        }
+                    } catch (e: Exception) {
+                        if (unlocked) notice = e.message ?: "Could not load albums"
+                    }
+                }
+            }
             var pendingExport by remember { mutableStateOf<Photo?>(null) }
 
             fun refresh() {
@@ -53,10 +72,13 @@ class MainActivity : ComponentActivity() {
                 val requestedPage = pageIndex
                 val requestedView = view
                 val requestedSearch = activeSearch
+                val requestedAlbum = viewingAlbumId
                 scope.launch {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            api.photosPage(requestedView, requestedSearch, requestedPage)
+                            if (requestedAlbum != null)
+                                api.albumPhotos(requestedAlbum, requestedSearch, requestedPage)
+                            else api.photosPage(requestedView, requestedSearch, requestedPage)
                         }
                         if (id != requestId || !unlocked) return@launch
                         if (requestedPage > 0 && requestedPage * PhotosApi.PAGE_SIZE >= result.total) {
@@ -74,6 +96,7 @@ class MainActivity : ComponentActivity() {
 
             fun chooseView(next: LibraryView) {
                 view = next
+                viewingAlbumId = null
                 pageIndex = 0
                 photos = emptyList()
                 refresh()
@@ -88,8 +111,17 @@ class MainActivity : ComponentActivity() {
                                 "restore" -> api.restore(photo.id)
                                 "trash" -> api.trash(photo.id)
                                 "favorite" -> api.favorite(photo.id, !photo.favorite)
+                                "add-to-album" -> {
+                                    val album = pickedAlbum ?: error("Choose an album")
+                                    api.addToAlbum(album.id, photo.id)
+                                }
+                                "remove-from-album" -> {
+                                    val albumId = viewingAlbumId ?: error("Open an album first")
+                                    api.removeFromAlbum(albumId, photo.id)
+                                }
                             }
                         }
+                        if (operation.endsWith("-album")) refreshAlbums()
                         refresh()
                     } catch (e: Exception) { notice = e.message ?: "Photo action failed" }
                     finally { loading = false }
@@ -185,6 +217,9 @@ class MainActivity : ComponentActivity() {
                                     unlocked = false
                                     pendingExport = null
                                     photos = emptyList()
+                                    albums = emptyList()
+                                    pickedAlbum = null
+                                    viewingAlbumId = null
                                     total = 0
                                     pageIndex = 0
                                     scope.launch {
@@ -223,6 +258,7 @@ class MainActivity : ComponentActivity() {
                                         view = LibraryView.ALL
                                         pageIndex = 0
                                         refresh()
+                                        refreshAlbums()
                                     } catch (e: Exception) { notice = e.message ?: "Unable to sign in" }
                                     finally { loading = false }
                                 }
@@ -258,6 +294,73 @@ class MainActivity : ComponentActivity() {
                                             else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     ) { Text(title) }
+                                }
+                            }
+                            Column(Modifier.fillMaxWidth()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box {
+                                        OutlinedButton(
+                                            enabled = !loading && albums.isNotEmpty(),
+                                            onClick = { albumMenuOpen = true }
+                                        ) { Text(pickedAlbum?.name ?: "Choose album") }
+                                        DropdownMenu(
+                                            expanded = albumMenuOpen,
+                                            onDismissRequest = { albumMenuOpen = false }
+                                        ) {
+                                            albums.forEach { album ->
+                                                DropdownMenuItem(
+                                                    text = { Text("${album.name} (${album.count})") },
+                                                    onClick = {
+                                                        pickedAlbum = album
+                                                        albumMenuOpen = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    TextButton(
+                                        enabled = !loading && pickedAlbum != null,
+                                        onClick = {
+                                            viewingAlbumId = pickedAlbum?.id
+                                            view = LibraryView.ALL
+                                            pageIndex = 0
+                                            photos = emptyList()
+                                            refresh()
+                                        }
+                                    ) { Text("View album") }
+                                    if (viewingAlbumId != null) {
+                                        TextButton(onClick = { chooseView(LibraryView.ALL) }) {
+                                            Text("Back to all")
+                                        }
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedTextField(
+                                        value = newAlbumName,
+                                        onValueChange = { newAlbumName = it.take(100) },
+                                        singleLine = true,
+                                        label = { Text("New album") },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        enabled = !loading && newAlbumName.isNotBlank(),
+                                        onClick = {
+                                            loading = true
+                                            scope.launch {
+                                                try {
+                                                    val created = withContext(Dispatchers.IO) {
+                                                        api.createAlbum(newAlbumName)
+                                                    }
+                                                    newAlbumName = ""
+                                                    pickedAlbum = created
+                                                    refreshAlbums()
+                                                    notice = "Album created; originals are unchanged."
+                                                } catch (e: Exception) {
+                                                    notice = e.message ?: "Could not create album"
+                                                } finally { loading = false }
+                                            }
+                                        }
+                                    ) { Text("Create") }
                                 }
                             }
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -310,6 +413,17 @@ class MainActivity : ComponentActivity() {
                                                     Text("Restore")
                                                 }
                                             } else {
+                                                if (viewingAlbumId != null) {
+                                                    TextButton(
+                                                        enabled = !loading,
+                                                        onClick = { actOn(photo, "remove-from-album") }
+                                                    ) { Text("Remove from album") }
+                                                } else if (pickedAlbum != null) {
+                                                    TextButton(
+                                                        enabled = !loading,
+                                                        onClick = { actOn(photo, "add-to-album") }
+                                                    ) { Text("Add to album") }
+                                                }
                                                 OutlinedButton(
                                                     enabled = !loading,
                                                     onClick = {
