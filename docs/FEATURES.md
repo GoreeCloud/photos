@@ -10,7 +10,7 @@ This is a development-stage self-hosted photo library. Capabilities below descri
 | Favorites and reversible trash | Implemented | Implemented | Implemented | Implemented |
 | Filename search, filtering and pagination | Implemented | Implemented | Implemented | Implemented |
 | Restore from trash | Implemented | Implemented | Implemented | Implemented |
-| Albums | Full create/rename/delete/membership API | Create, rename, delete, add/remove | Not yet | Not yet |
+| Albums | Full create/rename/delete/membership API | Create, rename, delete, add/remove | Browse, create, add/remove members | Not yet |
 | Original media read and partial-byte streaming | Implemented | Download/preview | Native private Save-original dialog | Not yet |
 | Duplicate preflight by SHA-256 | Implemented | Not yet | Not yet | Used in explicit folder import |
 | Explicit folder import | Via ordinary uploads | File chooser only | File picker only | System document-tree picker, foreground-only |

@@ -14,7 +14,7 @@
 | Image previews | Yes | Yes | Yes | Yes |
 | Favorites | Yes | Yes | Yes | Yes |
 | Reversible trash | Yes | Yes | Yes | Yes |
-| Albums and membership | Yes | Yes | Planned | Planned |
+| Albums and membership | Yes | Yes | Browse, create, add/remove members | Planned |
 | Filename search | Yes | Yes | Yes | Yes |
 | Original download / viewing | Yes | Yes | Download only | Planned |
 | Foreground, explicitly selected folder import with duplicate checks | Yes | N/A | N/A | Yes |
