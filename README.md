@@ -27,7 +27,7 @@ The server stores media as content-addressed objects, generating EXIF-stripped J
 
 1. Install Python 3.12+, [uv](https://docs.astral.sh/uv/) and Node.js 22+.
 2. In `api/`, run `uv sync --group dev`.
-3. Set a **unique** `PHOTOS_ADMIN_PASSWORD` of at least 12 characters in a local private shell environment. This value initializes the password hash on first run; on later launches the database's stored password hash is authoritative.
+3. Set a **unique** `PHOTOS_ADMIN_PASSWORD` of at least 12 characters in a local private shell environment. This value initializes the password hash on first run; on later launches the database's stored password hash is authoritative. Rotate the stored secret using `photosctl change-password` while logged in; rotation immediately revokes all active sessions.
 4. From `api/` run `uv run uvicorn app.main:app --factory --host 127.0.0.1 --port 8787`.
 5. In `web/`, run `npm ci && npm run dev`. Browse to `http://127.0.0.1:5173`.
 
