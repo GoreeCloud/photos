@@ -7,6 +7,10 @@
 - **GoreeCloud Mesh:** future opt-in events and sync; no implicit network sharing.
 - **GoreeCloud UI:** uses a pinned canonical token CSS snapshot from `gc-ui` for web. Native clients require independent visual/accessibility QA.
 
+## Credential rotation
+
+`POST /v1/settings/password` is bearer-authenticated, verifies the current password again, requires a different replacement of 12-1024 characters, atomically replaces the scrypt password hash and revokes **every** server session in SQLite. The first-run environment secret cannot undo a subsequent rotation. `photosctl change-password` prompts for secrets interactively, does not accept passwords on the command line, and reports no secret values. Rotation may interrupt ongoing authenticated operations. This is single-library credential management, **not** GoreeCloud Identity SSO or multi-user role-based access.
+
 ## Data model and backup
 Persistent state is `PHOTOS_DATA_DIR/photos.sqlite3`, `objects/` and `previews/`. Store the entire directory on a private encrypted host volume when possible. An **offline manual** `python -m app.backup backup` / `restore` utility snapshots SQLite, copies referenced originals and available previews, and embeds SHA-256 checksums. The new `python -m app.backup verify --input /private/backups/photos.tar` command independently checks the untrusted archive in read-only mode (except for a private temporary SQLite copy), including member paths, byte bounds, database integrity, content hashes, and database/media index membership, without creating a restore target. Restore validates file types, paths, all checksums, database health, and media integrity before promoting to a new destination. Run both in a secure private environment; **backups are not encrypted**, and **there is no backup schedule, network replication, or proven off-site restore plan**. Stop all API writers during backup and restore before relying on one for disaster recovery. Test a real full-size restore before production use.
 
@@ -26,7 +30,7 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 - Browser fetches authenticated originals to blob URLs for display; avoid opening very large videos on memory-constrained clients.
 - The Linux native Save-original flow explicitly requests a local destination, rejects HTTP redirects, bounds network buffers and total original size, and promotes a 0600 scratch file only after a complete authenticated transfer. It denies active originals in trash and discards transfers when the session locks.
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
-- No server-side token rotation or password-change endpoint exists yet. Recover using isolated DB administrative procedures, not public endpoints.
+- There is now a bearer-authenticated password-change endpoint requiring current-password confirmation; successful rotation invalidates all existing sessions. There is no public recovery route or GoreeCloud Identity integration.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.
 - Private `GET /v1/library/stats` returns bounded aggregate counters only; it requires the same bearer authorization as the library and never includes source filenames, paths, or hashes.
 - CORS does not replace authentication; do not add wildcard allowed origins.
