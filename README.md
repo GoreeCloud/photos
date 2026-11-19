@@ -9,6 +9,7 @@
 | Capability | Server | Web | Linux | Android |
 | --- | --- | --- | --- | --- |
 | Local single-library password and temporary access token | Yes | Yes | Yes | Yes |
+| Password rotation and all-session revocation | Yes | Settings form | CLI companion | Not yet |
 | Authenticated photo/video uploads | Yes | Yes | Yes | Yes |
 | Private library listing | Yes | Yes | Yes | Yes |
 | Image previews | Yes | Yes | Yes | Yes |
