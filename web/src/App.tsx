@@ -5,6 +5,10 @@ type Asset = {
   created_at: string; favorite: boolean; deleted_at: string | null;
 };
 type Album = { id: string; name: string; count: number };
+type LibraryStats = {
+  total: number; active: number; trashed: number; favorites: number;
+  images: number; videos: number; original_bytes: number; albums: number;
+};
 const ENDPOINT = import.meta.env.VITE_PHOTOS_API_URL ?? "";
 const PAGE_SIZE = 36;
 const toDate = (value: string) => new Date(value).toLocaleDateString();
@@ -56,6 +60,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [stats, setStats] = useState<LibraryStats | null>(null);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const requestNumber = useRef(0);
@@ -111,17 +116,19 @@ export default function App() {
     params.set("offset", String(page * PAGE_SIZE));
     const activeRequest = ++requestNumber.current;
     try {
-      const [assetData, albumData] = await Promise.all([
+      const [assetData, albumData, statsData] = await Promise.all([
         api<{ items: Asset[]; total: number }>(token, albumId
           ? "/v1/albums/" + encodeURIComponent(albumId) + "/assets?" + params
           : "/v1/assets?" + params),
-        api<{ items: Album[] }>(token, "/v1/albums")
+        api<{ items: Album[] }>(token, "/v1/albums"),
+        api<LibraryStats>(token, "/v1/library/stats")
       ]);
       if (activeRequest !== requestNumber.current) return;
       if (page > 0 && page * PAGE_SIZE >= assetData.total) { setPage(page - 1); return; }
       setAssets(assetData.items);
       setTotal(assetData.total);
       setAlbums(albumData.items);
+      setStats(statsData);
     } catch (e) {
       if (activeRequest === requestNumber.current) setNotice((e as Error).message);
     }
@@ -288,6 +295,7 @@ export default function App() {
           await api(token, "/v1/session", { method: "DELETE" }).catch(() => undefined);
           requestNumber.current += 1;
           setToken(""); setSelected(null); setAssets([]); setAlbums([]); setPage(0); setTotal(0);
+          setStats(null);
         }}>Lock</button>
       </header>
       <div className="content">
@@ -307,6 +315,15 @@ export default function App() {
             </button>
           </div>
         </div>
+        {stats && <section className="library-metrics" aria-label="Private library statistics">
+          <dl>
+            <div><dt>Active items</dt><dd>{stats.active.toLocaleString()}</dd></div>
+            <div><dt>Favorites</dt><dd>{stats.favorites.toLocaleString()}</dd></div>
+            <div><dt>In trash</dt><dd>{stats.trashed.toLocaleString()}</dd></div>
+            <div><dt>Stored originals</dt><dd>{labelSize(stats.original_bytes)}</dd></div>
+          </dl>
+          <p>Storage includes originals in trash. Nothing is shared or analyzed automatically.</p>
+        </section>}
         {albumId && <div className="album-commands" role="group" aria-label="Album actions">
           <button type="button" onClick={() => void renameAlbum()}>Rename album</button>
           <button type="button" onClick={() => void deleteAlbum()}>Delete album</button>
