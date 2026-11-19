@@ -281,7 +281,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ).fetchone()
             if not row or not check_password(body.current_password, row["value"]):
                 raise HTTPException(401, "Invalid current password")
-            if hmac.compare_digest(body.current_password, body.new_password):
+            if hmac.compare_digest(body.current_password.encode(), body.new_password.encode()):
                 raise HTTPException(422, "Choose a different password")
             db.execute(
                 "UPDATE configuration SET value=? WHERE key='password'",
