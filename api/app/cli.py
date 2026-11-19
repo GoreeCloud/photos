@@ -228,6 +228,9 @@ def parse_args(argv: list[str] | None = None):
     restore_bk = sub.add_parser("restore-backup", help="Recover to a new, nonexistent data folder")
     restore_bk.add_argument("--input", required=True, type=Path)
     restore_bk.add_argument("--data-dir", required=True, type=Path)
+    rehearsal = sub.add_parser("drill-backup", help="Verify and restore a disposable offline archive copy")
+    rehearsal.add_argument("--input", required=True, type=Path)
+    rehearsal.add_argument("--scratch-parent", type=Path)
     return parser.parse_args(argv)
 
 
@@ -240,6 +243,8 @@ def run(args):
         return offline.verify(args.input)
     if args.command == "restore-backup":
         return offline.restore(args.input, args.data_dir)
+    if args.command == "drill-backup":
+        return offline.drill(args.input, args.scratch_parent)
     api = Api(args.server, os.environ.get("PHOTOS_ACCESS_TOKEN", ""))
     if args.command == "health":
         return api.request("GET", "/health")

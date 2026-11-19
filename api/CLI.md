@@ -38,6 +38,7 @@ Outputs are JSON and failures return nonzero exit status. Downloads refuse exist
 uv run --frozen photosctl verify-library --data-dir /private/photos-data
 uv run --frozen photosctl backup --data-dir /private/photos-data --output /separate-private-volume/photos.tar
 uv run --frozen photosctl verify-backup --input /separate-private-volume/photos.tar
+uv run --frozen photosctl drill-backup --input /separate-private-volume/photos.tar --scratch-parent /private/scratch
 uv run --frozen photosctl restore-backup --input /separate-private-volume/photos.tar --data-dir /new/empty/restore-target
 ```
 
@@ -56,3 +57,7 @@ Run `photosctl --server https://your-private-server.example revoke-sessions`. Th
 ## Privileged credential attempt limits
 
 Password rotation, cross-device revocation and sign-in share the same per-library 15-minute SQLite-backed failure window. After five incorrect credential attempts from one observed network peer, further owner-password attempts return 429 until the window expires. Clients behind a common reverse proxy may share a peer key; deploy a gateway rate limiter, restrict ingress, and avoid repeated automated retries. No raw client IP is retained in the auth-failure table.
+
+## Disposable offline recovery drill
+
+`photosctl drill-backup --input /separate-private-volume/photos.tar [--scratch-parent /private/scratch]` verifies an existing **unencrypted** archive, checks available scratch disk capacity, temporarily restores the library into a private 0700 folder, checks SQLite integrity and every indexed original hash, confirms old access sessions were revoked, and removes that temporary library after success or failure. The archive and live library are not modified. Supply a trusted scratch volume with space for the full uncompressed archive plus database overhead; disk space checks cannot reserve capacity. No encryption, off-site replication or scheduled recovery is provided, and no full-size production disaster recovery objective has been demonstrated.

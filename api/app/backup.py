@@ -11,6 +11,7 @@ import io
 import json
 import os
 import re
+import shutil
 import sqlite3
 import tarfile
 import tempfile
@@ -384,6 +385,44 @@ def restore(archive: Path, data_dir: Path) -> dict:
             return {"files": len(checksums), "assets": len(originals), "restored_to": str(target)}
 
 
+
+def drill(archive: Path, scratch_parent: Path | None = None) -> dict:
+    """Temporarily restore an untrusted archive, verify contents, then delete the copy.
+
+    The source backup is read-only and no running Photos library is modified.
+    The scratch directory must have adequate free disk space for a full restore.
+    This is not evidence of encrypted/off-site recovery or production readiness.
+    """
+    if archive.is_symlink() or not archive.is_file():
+        raise ValueError("Recovery drill requires a regular, non-symlink archive")
+    verification = verify(archive)
+    parent = Path(tempfile.gettempdir()) if scratch_parent is None else scratch_parent
+    if parent.is_symlink() or not parent.is_dir():
+        raise ValueError("Scratch parent must be an existing, non-symlink directory")
+    with tarfile.open(archive, mode="r:") as source:
+        required = sum(member.size for member in source.getmembers() if member.isfile())
+    # This is a capacity preflight, not a reservation. Other processes may still
+    # consume the same disk while a drill is running.
+    if shutil.disk_usage(parent).free < required + 64 * 1024 * 1024:
+        raise OSError("Insufficient private scratch disk space for full restore drill")
+    with tempfile.TemporaryDirectory(prefix=".photos-recovery-drill-", dir=parent) as temp:
+        target = Path(temp) / "restored-library"
+        restore(archive, target)
+        inspection = verify_library(target)
+        if inspection["assets"] != verification["assets"]:
+            raise ValueError("Recovery drill asset count mismatch")
+        with sqlite3.connect(target / "photos.sqlite3") as db:
+            if db.execute("SELECT count(*) FROM sessions").fetchone()[0]:
+                raise ValueError("Recovered library unexpectedly retained sessions")
+        return {
+            "verified": True,
+            "restored": True,
+            "assets": inspection["assets"],
+            "original_bytes": inspection["original_bytes"],
+            "missing_previews": inspection["missing_previews"],
+            "scratch_deleted_on_completion": True,
+        }
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Offline private GoreeCloud Photos backup utility")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -397,6 +436,9 @@ def main() -> None:
     recover = sub.add_parser("restore", help="Restore to a new empty directory")
     recover.add_argument("--input", type=Path, required=True)
     recover.add_argument("--data-dir", type=Path, required=True)
+    rehearsal = sub.add_parser("drill", help="Verify and temporarily restore a private archive")
+    rehearsal.add_argument("--input", type=Path, required=True)
+    rehearsal.add_argument("--scratch-parent", type=Path)
     args = parser.parse_args()
     if args.command == "backup":
         result = backup(args.data_dir, args.output)
@@ -404,6 +446,8 @@ def main() -> None:
         result = verify_library(args.data_dir)
     elif args.command == "verify":
         result = verify(args.input)
+    elif args.command == "drill":
+        result = drill(args.input, args.scratch_parent)
     else:
         result = restore(args.input, args.data_dir)
     print(json.dumps(result, indent=2))
