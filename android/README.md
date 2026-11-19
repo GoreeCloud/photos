@@ -1,4 +1,6 @@
-# Android Photos — explicit folder import
+# Android Photos — foreground folder import and library browser
+
+The native Jetpack Compose library now pages media from the server 40 at a time, supports all/favorites/trash views, filtered filename search, manual refresh, and restoration of trashed items. It uses request-generation checks so results from older navigation actions cannot replace the current view. Original media is not deleted by hiding it in trash. Gallery thumbnails are authenticated and decoded in the app; signed production distribution and real device acceptance remain unverified.
 
 Native Kotlin/Jetpack Compose provides individual file selection and an optional **Import folder** action. The latter uses Android's system document-tree picker, reads only directly contained JPEG, PNG, GIF, WebP and MP4 files, computes each file's SHA-256 locally, queries the authenticated `POST /v1/assets/lookup` endpoint in bounded batches, and uploads only missing files. Existing files are skipped, including matches in the trash (reported separately; **never automatically restored**). Imports scan at most 500 supported files per action and reject files beyond the server's 512 MiB maximum.
 
