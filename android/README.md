@@ -37,3 +37,5 @@ In an unlocked library, Android's **Security** dialog offers password rotation (
 ## Android 15/16 system-bar safety
 
 The Compose top bar applies `Modifier.statusBarsPadding()` so library actions, particularly the Security and Lock controls, remain below the Android system status bar with edge-to-edge rendering enforced on modern Android. This was added after physical Android 16 testing exposed a visually rendered but touch-inaccessible top row. The full native UI must still undergo visual, TalkBack and responsive validation on representative screen sizes.
+
+The Android 16 physical-device Security dialog review also found that separate Material confirmation and dismissal slots caused the revoke/cancel controls to overlap. All three actions are now arranged as non-overlapping, full-width vertical buttons; physical retesting remains a required validation step.
