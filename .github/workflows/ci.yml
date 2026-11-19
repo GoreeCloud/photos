@@ -37,6 +37,7 @@ jobs:
         working-directory: web
         run: |
           npm ci
+          node --experimental-strip-types --test tests/network.test.mjs
           npm run build
   desktop-static:
     runs-on: ubuntu-24.04

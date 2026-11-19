@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { boundedBlob, boundedJson, PREVIEW_LIMIT, THUMB_LIMIT } from "./network";
 
 type Asset = {
   id: string; filename: string; media_type: string; bytes: number;
@@ -25,12 +26,12 @@ async function api<T>(token: string, path: string, init: RequestInit = {}): Prom
   if (!response.ok) {
     let detail = "Request failed (" + response.status + ")";
     try {
-      const data = await response.json();
+      const data = await boundedJson<{ detail?: unknown }>(response);
       if (typeof data.detail === "string") detail = data.detail;
     } catch { /* non-JSON error */ }
     throw new Error(detail);
   }
-  return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+  return response.status === 204 ? undefined as T : boundedJson<T>(response);
 }
 
 function Thumbnail({ token, asset }: { token: string; asset: Asset }) {
@@ -39,9 +40,10 @@ function Thumbnail({ token, asset }: { token: string; asset: Asset }) {
     if (asset.media_type.startsWith("video/")) return;
     let alive = true;
     let objectUrl: string | undefined;
+    const controller = new AbortController();
     fetch(ENDPOINT + "/v1/assets/" + encodeURIComponent(asset.id) + "/thumbnail", {
-      headers: { Authorization: "Bearer " + token }, cache: "no-store"
-    }).then((res) => { if (!res.ok) throw Error("No thumbnail"); return res.blob(); })
+      headers: { Authorization: "Bearer " + token }, cache: "no-store", signal: controller.signal
+    }).then((res) => { if (!res.ok) throw Error("No thumbnail"); return boundedBlob(res, THUMB_LIMIT); })
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
         if (alive) setSrc(objectUrl);
@@ -49,6 +51,7 @@ function Thumbnail({ token, asset }: { token: string; asset: Asset }) {
       }).catch(() => { if (alive) setSrc(undefined); });
     return () => {
       alive = false;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [asset.id, asset.media_type, token]);
@@ -72,6 +75,7 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<Asset | null>(null);
   const [preview, setPreview] = useState("");
+  const [previewError, setPreviewError] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -137,6 +141,7 @@ export default function App() {
     setBusy(false);
     setSelected(null);
     setPreview("");
+    setPreviewError("");
     setAssets([]);
     setAlbums([]);
     setStats(null);
@@ -230,18 +235,25 @@ export default function App() {
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!selected || !token) return;
+    setPreviewError("");
     let alive = true; let localUrl = "";
+    const controller = new AbortController();
     fetch(ENDPOINT + "/v1/assets/" + encodeURIComponent(selected.id) + "/original", {
-      headers: { Authorization: "Bearer " + token }, cache: "no-store"
+      headers: { Authorization: "Bearer " + token }, cache: "no-store", signal: controller.signal
     }).then((r) => {
       if (!r.ok) throw Error("Unable to load original");
-      return r.blob();
+      return boundedBlob(r, PREVIEW_LIMIT);
     }).then((blob) => {
       localUrl = URL.createObjectURL(blob);
       if (alive) setPreview(localUrl);
       else URL.revokeObjectURL(localUrl);
-    }).catch((e: Error) => { if (alive) setNotice(e.message); });
-    return () => { alive = false; setPreview(""); if (localUrl) URL.revokeObjectURL(localUrl); };
+    }).catch((e: Error) => { if (alive) setPreviewError(e.message); });
+    return () => {
+      alive = false;
+      controller.abort();
+      setPreview("");
+      if (localUrl) URL.revokeObjectURL(localUrl);
+    };
   }, [selected, token]);
 
   async function signin(event: React.FormEvent) {
@@ -252,7 +264,7 @@ export default function App() {
         body: JSON.stringify({ password }), cache: "no-store"
       });
       if (!res.ok) throw Error(res.status === 429 ? "Too many attempts. Try later." : "Incorrect password or server unavailable.");
-      const body: { access_token: string } = await res.json();
+      const body = await boundedJson<{ access_token: string }>(res);
       setToken(body.access_token); setPassword("");
     } catch (e) { setNotice((e as Error).message); }
     finally { setBusy(false); }
@@ -522,7 +534,7 @@ export default function App() {
           ? selected.media_type.startsWith("video/")
             ? <video controls src={preview} playsInline />
             : <img src={preview} alt={selected.filename}/>
-          : <p>Loading original…</p>}</div>
+          : <p role="status">{previewError || "Loading original…"}</p>}</div>
         <div className="dialog-foot"><span>{toDate(selected.created_at)} · {labelSize(selected.bytes)}</span>
           {preview && <a className="primary download" href={preview} download={selected.filename}>Save original</a>}
         </div>
