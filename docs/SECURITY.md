@@ -39,3 +39,6 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 
 ## Pre-release gates
 Run Python tests, static lint, web build, Qt QML runtime check, Android emulator/device test, authorization and file-handling fuzzing, vulnerability scans, license scan, backup/restore drill, and HTTPS ingress verification before production use.
+
+
+Android client: metadata JSON fetches are bounded to 4 MiB, and thumbnails retain the existing compressed 6 MiB and decoded 2048-pixel dimension limits. Lock invalidates the local bearer token synchronously before remote revocation and in-progress exports check session continuity. This does not replace device-level authorization, device testing, or server-side controls.
