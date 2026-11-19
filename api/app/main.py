@@ -148,6 +148,11 @@ class FavoriteIn(BaseModel):
     favorite: bool
 
 
+class PasswordChangeIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=12, max_length=1024)
+
+
 class AlbumIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
@@ -260,6 +265,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             db.execute("DELETE FROM sessions WHERE digest=?",
                        (hashlib.sha256(authorization[7:].encode()).hexdigest(),))
         return Response(status_code=204)
+
+    @app.post("/v1/settings/password", dependencies=[Depends(authorized)])
+    def rotate_password(body: PasswordChangeIn):
+        """Explicit password rotation invalidates every existing bearer session.
+
+        A single SQLite writer transaction serializes changes across local API
+        workers. The existing on-disk data remains intact; the current password
+        must be provided even when a session token is already authenticated.
+        """
+        with database(settings) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT value FROM configuration WHERE key='password'"
+            ).fetchone()
+            if not row or not check_password(body.current_password, row["value"]):
+                raise HTTPException(401, "Invalid current password")
+            if hmac.compare_digest(body.current_password.encode(), body.new_password.encode()):
+                raise HTTPException(422, "Choose a different password")
+            db.execute(
+                "UPDATE configuration SET value=? WHERE key='password'",
+                (make_password_hash(body.new_password),),
+            )
+            db.execute("DELETE FROM sessions")
+            db.execute("DELETE FROM auth_failures")
+        return {"changed": True, "sessions_revoked": True}
 
     @app.get("/v1/library/stats", dependencies=[Depends(authorized)])
     def library_stats():

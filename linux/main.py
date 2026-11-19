@@ -8,15 +8,49 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-from PySide6.QtCore import QObject, Property, QUrl, Signal, Slot
-from PySide6.QtGui import QGuiApplication, QImage
+from PySide6.QtCore import QBuffer, QByteArray, QFile, QIODevice, QObject, Property, QUrl, Signal, Slot
+from PySide6.QtGui import QGuiApplication, QImage, QImageReader
 from PySide6.QtNetwork import QHttpMultiPart, QHttpPart, QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickImageProvider
-from PySide6.QtCore import QFile, QIODevice
 
 ALLOWED_HTTP = {"localhost", "127.0.0.1", "::1"}
 MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
+MAX_JSON_BYTES = 4 * 1024 * 1024
+MAX_THUMB_BYTES = 6 * 1024 * 1024
+MAX_THUMB_DIMENSION = 2048
+
+
+def safe_thumbnail(payload: bytes) -> bool:
+    """Read JPEG dimensions without allocating image pixels for a suspicious reply."""
+    if not payload or len(payload) > MAX_THUMB_BYTES:
+        return False
+    source = QBuffer()
+    source.setData(QByteArray(payload))
+    if not source.open(QIODevice.OpenModeFlag.ReadOnly):
+        return False
+    reader = QImageReader(source)
+    reader.setDecideFormatFromContent(True)
+    dimensions = reader.size()
+    return (
+        bytes(reader.format()).lower() in (b"jpeg", b"jpg")
+        and dimensions.isValid()
+        and 1 <= dimensions.width() <= MAX_THUMB_DIMENSION
+        and 1 <= dimensions.height() <= MAX_THUMB_DIMENSION
+    )
+
+
+def read_bounded(reply, collector: bytearray, limit: int) -> bool:
+    """Consume Qt chunks without letting untrusted network data grow without bound."""
+    while reply.bytesAvailable():
+        chunk = bytes(reply.read(min(65536, reply.bytesAvailable())))
+        if len(collector) + len(chunk) > limit:
+            # Caller sets its failure state before aborting, because Qt may
+            # emit finished synchronously from abort().
+            return False
+        collector.extend(chunk)
+    return True
+
 
 
 class ThumbnailProvider(QQuickImageProvider):
@@ -179,6 +213,7 @@ class Bridge(QObject):
             QNetworkRequest.Attribute.RedirectPolicyAttribute,
             QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
         )
+        request.setTransferTimeout(30_000)
         request.setRawHeader(b"Accept", b"application/json")
         if self._token:
             request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
@@ -186,24 +221,45 @@ class Bridge(QObject):
             request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, content_type)
         data = json.dumps(payload).encode() if payload is not None else b""
         reply = self.manager.sendCustomRequest(request, method.encode(), data)
+        reply.setReadBufferSize(1024 * 1024)
+        body = bytearray()
+        too_large = False
+
+        def receive():
+            nonlocal too_large
+            if not too_large and not read_bounded(reply, body, MAX_JSON_BYTES):
+                too_large = True
+                reply.abort()
+
         def done():
+            receive()
             status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) or 0
-            body = bytes(reply.readAll())
+            error = reply.error()
             reply.deleteLater()
+            if too_large:
+                self.error.emit("API response exceeded 4 MiB safety limit")
+                return
             if status < 200 or status >= 300:
                 try:
                     detail = json.loads(body).get("detail", f"HTTP {status}")
-                except (ValueError, TypeError):
+                except (ValueError, TypeError, AttributeError):
                     detail = f"HTTP {status}"
-                self.error.emit(str(detail))
+                self.error.emit(str(detail)[:180])
+                return
+            if error != QNetworkReply.NetworkError.NoError:
+                self.error.emit("Authenticated API request failed")
                 return
             try:
                 result = json.loads(body) if body else {}
+                if not isinstance(result, dict):
+                    raise ValueError("Response must be a JSON object")
             except ValueError:
                 self.error.emit("Invalid server response")
                 return
             if callback:
                 callback(result)
+
+        reply.readyRead.connect(receive)
         reply.finished.connect(done)
 
     @Slot(str)
@@ -275,17 +331,34 @@ class Bridge(QObject):
             QNetworkRequest.RedirectPolicy.ManualRedirectPolicy,
         )
         request.setRawHeader(b"Authorization", ("Bearer " + self._token).encode())
+        request.setTransferTimeout(30_000)
         reply = self.manager.get(request)
+        reply.setReadBufferSize(1024 * 1024)
+        image_bytes = bytearray()
+        too_large = False
+
+        def receive():
+            nonlocal too_large
+            if not too_large and not read_bounded(reply, image_bytes, MAX_THUMB_BYTES):
+                too_large = True
+                reply.abort()
+
         def done():
+            receive()
             status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) or 0
-            payload = bytes(reply.readAll())
+            error = reply.error()
             reply.deleteLater()
-            if 200 <= status < 300 and self._token and generation == self._generation:
-                self.provider.images[asset_id] = payload
+            if (not too_large and status == 200
+                    and error == QNetworkReply.NetworkError.NoError
+                    and self._token and generation == self._generation
+                    and safe_thumbnail(bytes(image_bytes))):
+                self.provider.images[asset_id] = bytes(image_bytes)
                 # Drop QML's cache by refreshing model sources with generation suffix.
                 self._items = [{**x, "thumbVersion": str(len(self.provider.images))}
                                for x in self._items]
                 self.libraryChanged.emit()
+
+        reply.readyRead.connect(receive)
         reply.finished.connect(done)
 
     @Slot(str)
