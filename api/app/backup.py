@@ -201,6 +201,15 @@ def backup(data_dir: Path, output: Path) -> dict:
         ).encode()
         if len(manifest) > MAX_MANIFEST_BYTES:
             raise ValueError("Backup manifest exceeds supported size")
+        # Never create an archive that our own verifier and restore would
+        # refuse. Count manifest.json as a distinct archive member.
+        if len(files) + 1 > MAX_ARCHIVE_FILES:
+            raise ValueError("Backup exceeds supported archive file count")
+        member_sizes = [path.stat().st_size for path in files.values()]
+        if any(size > MAX_ARCHIVE_MEMBER_BYTES for size in member_sizes):
+            raise ValueError("Backup exceeds supported member size")
+        if sum(member_sizes) + len(manifest) > MAX_ARCHIVE_TOTAL_BYTES:
+            raise ValueError("Backup exceeds supported archive total size")
         temp_archive: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -308,7 +317,7 @@ def verify(archive: Path) -> dict:
 
 def restore(archive: Path, data_dir: Path) -> dict:
     target = data_dir.absolute()
-    if target.exists():
+    if target.exists() or target.is_symlink():
         raise FileExistsError("Restore requires a new, nonexistent data directory")
     target.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(archive, mode="r:") as tar:
@@ -319,7 +328,8 @@ def restore(archive: Path, data_dir: Path) -> dict:
         if len(set(names)) != len(names) or "manifest.json" not in names or "photos.sqlite3" not in names:
             raise ValueError("Incomplete or duplicate archive members")
         for m in members:
-            if not m.isfile() or not acceptable_name(m.name) or m.size > MAX_ARCHIVE_MEMBER_BYTES:
+            if (not m.isfile() or not acceptable_name(m.name)
+                    or m.size < 0 or m.size > MAX_ARCHIVE_MEMBER_BYTES):
                 raise ValueError("Unsafe backup archive member")
         manifest_member = tar.getmember("manifest.json")
         if manifest_member.size > MAX_MANIFEST_BYTES:
@@ -381,7 +391,35 @@ def restore(archive: Path, data_dir: Path) -> dict:
                 ).fetchone():
                     db.execute("DELETE FROM auth_failures")
             sqlite_integrity(stage / "photos.sqlite3")
-            os.rename(stage, target)
+            # Another writer may have created the destination while this
+            # untrusted archive was being verified/extracted. Do not replace it.
+            if target.exists() or target.is_symlink():
+                raise FileExistsError("Restore destination appeared during extraction")
+            if os.name == "posix":
+                # Claim the previously nonexistent destination atomically.
+                # Another local process cannot insert an empty directory
+                # between our final existence check and this exclusive mkdir.
+                target.mkdir(mode=0o700)
+                reserved = target.lstat()
+                try:
+                    # POSIX rename replaces ONLY our reserved empty directory.
+                    # A nonempty directory appearing meanwhile makes it fail.
+                    os.rename(stage, target)
+                except OSError:
+                    # Never delete a directory swapped in by another process.
+                    try:
+                        current = target.lstat()
+                        if (current.st_dev, current.st_ino) == (
+                            reserved.st_dev, reserved.st_ino
+                        ):
+                            target.rmdir()
+                    except OSError:
+                        pass
+                    raise
+            else:
+                # Windows rename cannot replace an existing empty directory.
+                # Run in a trusted private parent with no competing writers.
+                os.rename(stage, target)
             return {"files": len(checksums), "assets": len(originals), "restored_to": str(target)}
 
 
