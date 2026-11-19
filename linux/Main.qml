@@ -32,10 +32,107 @@ ApplicationWindow {
         onAccepted: photosBridge.download(window.pendingDownloadId, selectedFile.toString())
     }
 
+    Dialog {
+        id: securityDialog
+        title: "Library security"
+        modal: true
+        focus: true
+        width: Math.min(window.width - 36, 485)
+        anchors.centerIn: parent
+        closePolicy: Popup.CloseOnEscape
+        property string feedback: ""
+        onOpened: currentSecret.forceActiveFocus()
+        onClosed: {
+            currentSecret.text = ""
+            newSecret.text = ""
+            confirmSecret.text = ""
+            feedback = ""
+            securityButton.forceActiveFocus()
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                text: "Changing the password or signing out all devices immediately revokes every session."
+                wrapMode: Text.WordWrap
+            }
+            TextField {
+                id: currentSecret
+                Layout.fillWidth: true
+                placeholderText: "Current library password"
+                Accessible.name: "Current library password"
+                echoMode: TextInput.Password
+                maximumLength: 1024
+            }
+            TextField {
+                id: newSecret
+                Layout.fillWidth: true
+                placeholderText: "New password (12–1024 characters)"
+                Accessible.name: "New library password"
+                echoMode: TextInput.Password
+                maximumLength: 1024
+            }
+            TextField {
+                id: confirmSecret
+                Layout.fillWidth: true
+                placeholderText: "Confirm new password"
+                Accessible.name: "Confirm new library password"
+                echoMode: TextInput.Password
+                maximumLength: 1024
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: securityDialog.feedback.length > 0
+                text: securityDialog.feedback
+                wrapMode: Text.WordWrap
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Change password and sign out all devices"
+                enabled: currentSecret.text.length > 0 && newSecret.text.length >= 12
+                         && confirmSecret.text.length > 0
+                onClicked: {
+                    const current = currentSecret.text
+                    const replacement = newSecret.text
+                    const confirmation = confirmSecret.text
+                    currentSecret.text = ""
+                    newSecret.text = ""
+                    confirmSecret.text = ""
+                    securityDialog.feedback = ""
+                    photosBridge.changePassword(current, replacement, confirmation)
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Sign out all devices without changing password"
+                enabled: currentSecret.text.length > 0
+                onClicked: {
+                    const current = currentSecret.text
+                    currentSecret.text = ""
+                    newSecret.text = ""
+                    confirmSecret.text = ""
+                    securityDialog.feedback = ""
+                    photosBridge.revokeAllSessions(current)
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Cancel"
+                onClicked: securityDialog.close()
+            }
+        }
+    }
+
     Connections {
         target: photosBridge
-        function onError(text) { message.text = text }
+        function onError(text) {
+            message.text = text
+            if (securityDialog.opened) securityDialog.feedback = text
+        }
         function onMessage(text) { message.text = text }
+        function onSecurityCompleted() { securityDialog.close() }
     }
 
     ColumnLayout {
@@ -48,6 +145,13 @@ ApplicationWindow {
             Label { text: "✦ GoreeCloud Photos"; font.pixelSize: 24; font.bold: true; Layout.fillWidth: true }
             Button { text: "Refresh"; visible: photosBridge.loggedIn; onClicked: photosBridge.refresh() }
             Button { text: "Add photos"; visible: photosBridge.loggedIn; onClicked: picker.open() }
+            Button {
+                id: securityButton
+                text: "Security"
+                visible: photosBridge.loggedIn
+                Accessible.name: "Manage library password and device sessions"
+                onClicked: securityDialog.open()
+            }
             Button { text: "Lock"; visible: photosBridge.loggedIn; onClicked: photosBridge.logout() }
         }
 
