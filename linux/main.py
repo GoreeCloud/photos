@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from PySide6.QtCore import QObject, Property, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QImage
@@ -48,6 +48,10 @@ class Bridge(QObject):
         self._token = ""
         self._items = []
         self._generation = 0
+        self._view = "library"
+        self._search = ""
+        self._page = 0
+        self._total = 0
 
     @Property(bool, notify=loggedInChanged)
     def loggedIn(self):
@@ -56,6 +60,43 @@ class Bridge(QObject):
     @Property("QVariantList", notify=libraryChanged)
     def items(self):
         return self._items
+
+    @Property(str, notify=libraryChanged)
+    def view(self):
+        return self._view
+
+    @Property(int, notify=libraryChanged)
+    def currentPage(self):
+        return self._page + 1
+
+    @Property(int, notify=libraryChanged)
+    def pageCount(self):
+        return max(1, (self._total + 59) // 60)
+
+    @Property(int, notify=libraryChanged)
+    def total(self):
+        return self._total
+
+    @Slot(str)
+    def setView(self, view):
+        if view not in ("library", "favorites", "trash"):
+            return
+        self._view = view
+        self._page = 0
+        self.refresh()
+
+    @Slot(str)
+    def setSearch(self, value):
+        self._search = value[:128]
+        self._page = 0
+        self.refresh()
+
+    @Slot(int)
+    def changePage(self, change):
+        new_page = self._page + change
+        if 0 <= new_page and new_page * 60 < self._total:
+            self._page = new_page
+            self.refresh()
 
     def send(self, method, path, payload=None, callback=None, content_type="application/json"):
         request = QNetworkRequest(QUrl(self.server + path))
@@ -101,7 +142,10 @@ class Bridge(QObject):
         if self._token:
             self.send("DELETE", "/v1/session")
         self._token = ""
+        self._generation += 1
         self._items = []
+        self._total = 0
+        self._page = 0
         self.provider.images.clear()
         self.loggedInChanged.emit()
         self.libraryChanged.emit()
@@ -115,13 +159,25 @@ class Bridge(QObject):
         def done(data):
             if generation != self._generation:
                 return
+            new_total = data.get("total", 0)
+            if self._page and self._page * 60 >= new_total:
+                self._page = max(0, (new_total - 1) // 60)
+                self.refresh()
+                return
+            self._total = new_total
             self._items = data.get("items", [])
             self.provider.images.clear()
             self.libraryChanged.emit()
             for item in self._items:
                 if item.get("media_type", "").startswith("image/"):
                     self.fetch_thumb(item["id"], generation)
-        self.send("GET", "/v1/assets?limit=100", callback=done)
+        query = urlencode({
+            "limit": 60, "offset": self._page * 60,
+            "favorite": str(self._view == "favorites").lower(),
+            "trashed": str(self._view == "trash").lower(),
+            "search": self._search,
+        })
+        self.send("GET", "/v1/assets?" + query, callback=done)
 
     def fetch_thumb(self, asset_id, generation):
         request = QNetworkRequest(QUrl(self.server + "/v1/assets/" + asset_id + "/thumbnail"))
@@ -138,6 +194,10 @@ class Bridge(QObject):
                                for x in self._items]
                 self.libraryChanged.emit()
         reply.finished.connect(done)
+
+    @Slot(str)
+    def restore(self, asset_id):
+        self.send("POST", f"/v1/assets/{asset_id}/restore", callback=lambda _: self.refresh())
 
     @Slot(str)
     def upload(self, file_url):
