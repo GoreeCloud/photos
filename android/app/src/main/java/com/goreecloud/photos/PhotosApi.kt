@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import org.json.JSONArray
@@ -28,6 +29,7 @@ class PhotosApi(private val context: Context) {
     companion object {
         const val PAGE_SIZE = 40
         private const val MAX_ORIGINAL = 512L * 1024 * 1024
+        private const val MAX_THUMBNAIL = 6L * 1024 * 1024
     }
     var server: String = "http://127.0.0.1:8787"
         private set
@@ -180,7 +182,23 @@ class PhotosApi(private val context: Context) {
         try {
             val status = conn.responseCode
             if (status != 200) return null
-            val bytes = conn.inputStream.use { it.readBytes() }
+            if (conn.contentLengthLong > MAX_THUMBNAIL) return null
+            val data = ByteArrayOutputStream()
+            conn.inputStream.use { stream ->
+                val buffer = ByteArray(65536)
+                var countTotal = 0L
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count == -1) break
+                    countTotal += count
+                    if (countTotal > MAX_THUMBNAIL) return null
+                    data.write(buffer, 0, count)
+                }
+            }
+            val bytes = data.toByteArray()
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth !in 1..2048 || bounds.outHeight !in 1..2048) return null
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         } finally { conn.disconnect() }
     }
@@ -242,7 +260,19 @@ class PhotosApi(private val context: Context) {
                 out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"$name\"\r\n" +
                     "Content-Type: application/octet-stream\r\n\r\n").toByteArray())
                 val input = resolver.openInputStream(uri) ?: error("Cannot read selected document")
-                input.use { it.copyTo(out, 65536) }
+                input.use { source ->
+                    val buffer = ByteArray(65536)
+                    var uploaded = 0L
+                    while (true) {
+                        val count = source.read(buffer)
+                        if (count == -1) break
+                        uploaded += count
+                        check(uploaded <= MAX_ORIGINAL) {
+                            "Selected media exceeds the 512 MiB upload limit"
+                        }
+                        out.write(buffer, 0, count)
+                    }
+                }
                 out.write("\r\n--$boundary--\r\n".toByteArray())
             }
             read(conn)

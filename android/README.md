@@ -14,3 +14,8 @@ Build with `cd android && ./gradlew :app:assembleDebug`. Test on a real Android 
 ## User-directed original exports
 
 Each active photo/video has a **Save original** control that launches the operating system's `ACTION_CREATE_DOCUMENT` file picker. The Android client fetches the original via its authenticated API, bounds the transfer to 512 MiB, verifies byte count and SHA-256 against the library record in app-private temporary storage, and only then writes to the explicitly selected document URI. The private temporary data is deleted in `finally`. No broad storage permission, background scan, persisted URI grant, or automatic cloud sharing is added. An interrupted document-provider write can still leave an incomplete user-selected document; the UI warns the user to review it rather than silently deleting a file. This is export, **not** a verified disaster recovery or backup facility. Validate on a real device before release.
+
+
+## Bounded media ingest and previews
+
+Direct selected-file uploads also enforce the 512 MiB media limit while streaming from Android's document provider. Authentication is required; the client never auto-scans the gallery. Image thumbnails are limited to 6 MiB of compressed bytes and 2048 pixels per axis before decoding, reducing the impact of unexpected or malicious responses from a misconfigured server. This is defense in depth, not a substitute for hardened server-side image handling or a decoder sandbox.
