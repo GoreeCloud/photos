@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
             var total by remember { mutableIntStateOf(0) }
             var requestId by remember { mutableIntStateOf(0) }
             var photos by remember { mutableStateOf<List<Photo>>(emptyList()) }
+            var pendingSave by remember { mutableStateOf<Photo?>(null) }
 
             fun refresh() {
                 val id = ++requestId
@@ -134,6 +135,31 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         notice = e.message ?: "Folder import failed"
                     } finally { loading = false }
+                }
+            }
+
+            // User-selected output through the system picker; no media permissions.
+            val saveOriginalPicker = rememberLauncherForActivityResult(
+                ActivityResultContracts.CreateDocument("application/octet-stream")
+            ) { document ->
+                val candidate = pendingSave
+                pendingSave = null
+                if (document == null || candidate == null || !unlocked) {
+                    return@rememberLauncherForActivityResult
+                }
+                loading = true
+                notice = "Saving selected original..."
+                scope.launch {
+                    try {
+                        val count = withContext(Dispatchers.IO) {
+                            api.saveOriginal(candidate.id, document)
+                        }
+                        notice = "Original saved to selected document ($count bytes)."
+                    } catch (e: Exception) {
+                        notice = e.message ?: "Unable to save original"
+                    } finally {
+                        loading = false
+                    }
                 }
             }
 
@@ -289,6 +315,10 @@ class MainActivity : ComponentActivity() {
                                                         Text("Trash")
                                                     }
                                                 }
+                                                TextButton(enabled = !loading, onClick = {
+                                                    pendingSave = photo
+                                                    saveOriginalPicker.launch(photo.name)
+                                                }) { Text("Save original") }
                                             }
                                         }
                                     }

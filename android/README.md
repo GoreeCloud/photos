@@ -9,3 +9,8 @@ Native Kotlin/Jetpack Compose provides individual file selection and an optional
 ## Development checks
 
 Build with `cd android && ./gradlew :app:assembleDebug`. Test on a real Android device with a trusted HTTPS server: unlock the library, choose a folder with a mixture of new and previously imported photos, import it twice, then trash one asset and import again. Verify the second import skips existing hashes and that trashed content is not silently restored. Denied picker access, expired sessions, oversized photos, and inaccessible documents should be treated as errors or counted failures. Device/emulator acceptance is not established by a debug build alone.
+
+
+## Save original (explicit user control)
+
+In All or Favorites, select **Save original** beneath the photo/video. Android's `ACTION_CREATE_DOCUMENT` system picker creates a user-chosen destination, and the app streams the authenticated original directly to its document URI with a 512 MiB cap and checks the complete Content-Length when provided. Individual document uploads also stop locally at 512 MiB. Automatic HTTP redirects are disabled; a failed transfer makes a best-effort attempt to delete the newly created partial document. No blanket storage permissions, automatic camera-roll exports, or background photo downloads are enabled. Originals in Trash cannot be saved until restored.

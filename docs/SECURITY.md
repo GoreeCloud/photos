@@ -25,6 +25,7 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 - The MP4 signature check is not a full decoder validation. An uploaded MP4 should not be processed by ffmpeg before an isolated media-processing sandbox exists.
 - Browser fetches authenticated originals to blob URLs for display; avoid opening very large videos on memory-constrained clients.
 - The Linux native Save-original flow explicitly requests a local destination, rejects HTTP redirects, bounds network buffers and total original size, and promotes a 0600 scratch file only after a complete authenticated transfer. It denies active originals in trash and discards transfers when the session locks.
+- The Android Save-original action requires an explicit ACTION_CREATE_DOCUMENT destination, streams the authenticated original without full-size buffering, rejects redirects and transfers over 512 MiB, and attempts to delete incomplete picker-created documents. It does not request general media/storage permissions.
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
 - No server-side token rotation or password-change endpoint exists yet. Recover using isolated DB administrative procedures, not public endpoints.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.

@@ -23,7 +23,10 @@ data class PhotosPage(val items: List<Photo>, val total: Int)
 
 /** Single-library API. Authentication lives only in process memory. */
 class PhotosApi(private val context: Context) {
-    companion object { const val PAGE_SIZE = 40 }
+    companion object {
+        const val PAGE_SIZE = 40
+        private const val MAX_MEDIA_BYTES = 512L * 1024L * 1024L
+    }
     var server: String = "http://127.0.0.1:8787"
         private set
     private var token: String? = null
@@ -151,6 +154,49 @@ class PhotosApi(private val context: Context) {
         try { read(conn) } finally { conn.disconnect() }
     }
 
+    /**
+     * Stream one private original to a document newly created by Android's
+     * ACTION_CREATE_DOCUMENT picker. The caller must choose the destination.
+     * No blanket device-storage access or background transfer is involved.
+     */
+    fun saveOriginal(id: String, document: Uri): Long {
+        require(UUID.fromString(id).toString() == id) { "Invalid original identifier" }
+        require(document.scheme == "content") { "Select a document provider destination" }
+        val conn = connection("/v1/assets/$id/original", "GET")
+        try {
+            conn.setRequestProperty("Accept", "application/octet-stream")
+            val status = conn.responseCode
+            check(status == 200) { "Original unavailable (HTTP $status)" }
+            val reported = conn.contentLengthLong
+            check(reported in -1..MAX_MEDIA_BYTES) { "Original exceeds 512 MiB maximum" }
+            val output = context.contentResolver.openOutputStream(document, "wt")
+                ?: error("Cannot write selected document")
+            var received = 0L
+            output.use { sink ->
+                conn.inputStream.use { stream ->
+                    val buffer = ByteArray(65536)
+                    while (true) {
+                        val count = stream.read(buffer)
+                        if (count == -1) break
+                        received += count
+                        check(received <= MAX_MEDIA_BYTES) { "Original exceeds 512 MiB maximum" }
+                        sink.write(buffer, 0, count)
+                    }
+                }
+                sink.flush()
+            }
+            check(reported < 0 || received == reported) { "Original transfer was incomplete" }
+            return received
+        } catch (error: Exception) {
+            // ACTION_CREATE_DOCUMENT created the output for this explicit
+            // user action. Do not leave a partial private original behind.
+            runCatching { context.contentResolver.delete(document, null, null) }
+            throw error
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     fun upload(uri: Uri) {
         val resolver: ContentResolver = context.contentResolver
         var name = "photo"
@@ -169,7 +215,19 @@ class PhotosApi(private val context: Context) {
                 out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"$name\"\r\n" +
                     "Content-Type: application/octet-stream\r\n\r\n").toByteArray())
                 val input = resolver.openInputStream(uri) ?: error("Cannot read selected document")
-                input.use { it.copyTo(out, 65536) }
+                input.use { source ->
+                    val buffer = ByteArray(65536)
+                    var countBytes = 0L
+                    while (true) {
+                        val count = source.read(buffer)
+                        if (count == -1) break
+                        countBytes += count
+                        check(countBytes <= MAX_MEDIA_BYTES) {
+                            "Selected media exceeds 512 MiB limit"
+                        }
+                        out.write(buffer, 0, count)
+                    }
+                }
                 out.write("\r\n--$boundary--\r\n".toByteArray())
             }
             read(conn)

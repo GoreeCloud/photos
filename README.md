@@ -16,7 +16,7 @@
 | Reversible trash | Yes | Yes | Yes | Yes |
 | Albums and membership | Yes | Yes | Planned | Planned |
 | Filename search | Yes | Yes | Yes | Yes |
-| Original download / viewing | Yes | Yes | Download only | Planned |
+| Original download / viewing | Yes | Yes | Download only | Download only |
 | Foreground, explicitly selected folder import with duplicate checks | Yes | N/A | N/A | Yes |
 | Background camera roll backup | No | N/A | N/A | Planned with consent |
 | E2EE / multi-user sharing / face recognition | No | No | No | No |
