@@ -12,6 +12,7 @@ ApplicationWindow {
     minimumHeight: 440
     title: "GoreeCloud Photos"
     color: palette.window
+    property string pendingDownloadId: ""
 
     FileDialog {
         id: picker
@@ -21,6 +22,14 @@ ApplicationWindow {
         onAccepted: {
             for (let file of selectedFiles) photosBridge.upload(file.toString())
         }
+    }
+
+    FileDialog {
+        id: savePicker
+        title: "Save original photo or video"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["All files (*)"]
+        onAccepted: photosBridge.download(window.pendingDownloadId, selectedFile.toString())
     }
 
     Connections {
@@ -144,6 +153,15 @@ ApplicationWindow {
                                 text: modelData.favorite ? "♥" : "♡"
                                 Accessible.name: modelData.favorite ? "Remove favorite" : "Add favorite"
                                 onClicked: photosBridge.favorite(modelData.id, !modelData.favorite)
+                            }
+                            Button {
+                                text: "Save"
+                                visible: photosBridge.view !== "trash"
+                                Accessible.name: "Save original " + modelData.filename
+                                onClicked: {
+                                    window.pendingDownloadId = modelData.id
+                                    savePicker.open()
+                                }
                             }
                             Button {
                                 text: "Trash"
