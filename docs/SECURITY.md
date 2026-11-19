@@ -25,6 +25,7 @@ The password hash is scrypt with a random per-library 16-byte salt. Session toke
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
 - No server-side token rotation or password-change endpoint exists yet. Recover using isolated DB administrative procedures, not public endpoints.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.
+- Private `GET /v1/library/stats` returns bounded aggregate counters only; it requires the same bearer authorization as the library and never includes source filenames, paths, or hashes.
 - CORS does not replace authentication; do not add wildcard allowed origins.
 
 ## Response to incidents
