@@ -52,3 +52,7 @@ Run `uv run --frozen photosctl --server https://your-private-server.example chan
 ## Sign out every device without password rotation
 
 Run `photosctl --server https://your-private-server.example revoke-sessions`. The command requires the current library password through a non-echoing prompt even if an existing `PHOTOS_ACCESS_TOKEN` is supplied. It revokes all SQLite bearer sessions, including the current CLI session. The password itself does not change; users can sign in again. The command logs no secrets and stores no local credentials. This is for intentional owner-directed lockout, not a substitute for password rotation if a credential is suspected to be compromised.
+
+## Privileged credential attempt limits
+
+Password rotation, cross-device revocation and sign-in share the same per-library 15-minute SQLite-backed failure window. After five incorrect credential attempts from one observed network peer, further owner-password attempts return 429 until the window expires. Clients behind a common reverse proxy may share a peer key; deploy a gateway rate limiter, restrict ingress, and avoid repeated automated retries. No raw client IP is retained in the auth-failure table.

@@ -277,42 +277,74 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                        (hashlib.sha256(authorization[7:].encode()).hexdigest(),))
         return Response(status_code=204)
 
-    @app.post("/v1/settings/password", dependencies=[Depends(authorized)])
-    def rotate_password(body: PasswordChangeIn):
-        """Explicit password rotation invalidates every existing bearer session.
+    def owner_password_status(db: sqlite3.Connection, request: Request, supplied: str) -> int | None:
+        """Check the current owner secret against the persistent per-peer throttle."""
+        peer = request.client.host if request.client else "unknown"
+        now = int(time.time())
+        secret_row = db.execute(
+            "SELECT value FROM configuration WHERE key='rate_secret'"
+        ).fetchone()
+        if secret_row is None:
+            raise RuntimeError("Missing login rate-limit secret")
+        peer_digest = hmac.new(
+            bytes.fromhex(secret_row["value"]), peer.encode(), hashlib.sha256
+        ).hexdigest()
+        db.execute("DELETE FROM auth_failures WHERE window_start <= ?", (now - 900,))
+        attempts = db.execute(
+            "SELECT failed_count FROM auth_failures WHERE peer_digest=?", (peer_digest,)
+        ).fetchone()
+        if attempts and attempts["failed_count"] >= 5:
+            return 429
+        record = db.execute(
+            "SELECT value FROM configuration WHERE key='password'"
+        ).fetchone()
+        if not record or not check_password(supplied, record["value"]):
+            if attempts:
+                db.execute(
+                    "UPDATE auth_failures SET failed_count=failed_count+1 WHERE peer_digest=?",
+                    (peer_digest,),
+                )
+            else:
+                db.execute(
+                    "INSERT INTO auth_failures VALUES (?,?,?)", (peer_digest, 1, now)
+                )
+            return 401
+        db.execute("DELETE FROM auth_failures WHERE peer_digest=?", (peer_digest,))
+        return None
 
-        A single SQLite writer transaction serializes changes across local API
-        workers. The existing on-disk data remains intact; the current password
-        must be provided even when a session token is already authenticated.
-        """
+    @app.post("/v1/settings/password", dependencies=[Depends(authorized)])
+    def rotate_password(body: PasswordChangeIn, request: Request):
+        """Rotate the password and revoke sessions in one SQLite transaction."""
         with database(settings) as db:
             db.execute("BEGIN IMMEDIATE")
-            row = db.execute(
-                "SELECT value FROM configuration WHERE key='password'"
-            ).fetchone()
-            if not row or not check_password(body.current_password, row["value"]):
-                raise HTTPException(401, "Invalid current password")
-            if hmac.compare_digest(body.current_password.encode(), body.new_password.encode()):
-                raise HTTPException(422, "Choose a different password")
-            db.execute(
-                "UPDATE configuration SET value=? WHERE key='password'",
-                (make_password_hash(body.new_password),),
-            )
-            db.execute("DELETE FROM sessions")
-            db.execute("DELETE FROM auth_failures")
+            status = owner_password_status(db, request, body.current_password)
+            if status is None:
+                if hmac.compare_digest(body.current_password.encode(), body.new_password.encode()):
+                    raise HTTPException(422, "Choose a different password")
+                db.execute(
+                    "UPDATE configuration SET value=? WHERE key='password'",
+                    (make_password_hash(body.new_password),),
+                )
+                db.execute("DELETE FROM sessions")
+                db.execute("DELETE FROM auth_failures")
+        if status == 429:
+            raise HTTPException(429, "Too many credential attempts; try later")
+        if status == 401:
+            raise HTTPException(401, "Invalid current password")
         return {"changed": True, "sessions_revoked": True}
 
     @app.post("/v1/settings/revoke-sessions", dependencies=[Depends(authorized)])
-    def revoke_all_sessions(body: PasswordIn):
-        """Manually revoke every library session without changing the credential."""
+    def revoke_all_sessions(body: PasswordIn, request: Request):
+        """Revoke every session, requiring both bearer and rate-limited owner secret."""
         with database(settings) as db:
             db.execute("BEGIN IMMEDIATE")
-            record = db.execute(
-                "SELECT value FROM configuration WHERE key='password'"
-            ).fetchone()
-            if not record or not check_password(body.password, record["value"]):
-                raise HTTPException(401, "Invalid current password")
-            db.execute("DELETE FROM sessions")
+            status = owner_password_status(db, request, body.password)
+            if status is None:
+                db.execute("DELETE FROM sessions")
+        if status == 429:
+            raise HTTPException(429, "Too many credential attempts; try later")
+        if status == 401:
+            raise HTTPException(401, "Invalid current password")
         return {"sessions_revoked": True}
 
     @app.get("/v1/library/stats", dependencies=[Depends(authorized)])
