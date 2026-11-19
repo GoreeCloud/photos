@@ -10,6 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.UUID
 
 data class Photo(
@@ -17,8 +18,12 @@ data class Photo(
     val favorite: Boolean, val bytes: Long
 )
 
+enum class LibraryView { ALL, FAVORITES, TRASH }
+data class PhotosPage(val items: List<Photo>, val total: Int)
+
 /** Single-library API. Authentication lives only in process memory. */
 class PhotosApi(private val context: Context) {
+    companion object { const val PAGE_SIZE = 40 }
     var server: String = "http://127.0.0.1:8787"
         private set
     private var token: String? = null
@@ -74,15 +79,26 @@ class PhotosApi(private val context: Context) {
         } finally { token = null }
     }
 
-    fun photos(favorites: Boolean = false): List<Photo> {
-        val conn = connection("/v1/assets?limit=100" + if (favorites) "&favorite=true" else "", "GET")
+    /** Server-paged library query, including trash. Does not scan device storage. */
+    fun photosPage(
+        view: LibraryView = LibraryView.ALL, search: String = "", page: Int = 0
+    ): PhotosPage {
+        require(page in 0..25000) { "Page is out of range" }
+        require(search.length <= 128)
+        val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
+        val path = "/v1/assets?limit=$PAGE_SIZE&offset=${page * PAGE_SIZE}" +
+            "&favorite=${view == LibraryView.FAVORITES}&trashed=${view == LibraryView.TRASH}" +
+            "&search=$encoded"
+        val conn = connection(path, "GET")
         try {
-            val array = JSONObject(read(conn)).getJSONArray("items")
-            return (0 until array.length()).map { i ->
+            val body = JSONObject(read(conn))
+            val array = body.getJSONArray("items")
+            val items = (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 Photo(obj.getString("id"), obj.getString("filename"),
                     obj.getString("media_type"), obj.getBoolean("favorite"), obj.getLong("bytes"))
             }
+            return PhotosPage(items, body.getInt("total"))
         } finally { conn.disconnect() }
     }
 
@@ -128,6 +144,11 @@ class PhotosApi(private val context: Context) {
                 }
             }
         } finally { conn.disconnect() }
+    }
+
+    fun restore(id: String) {
+        val conn = connection("/v1/assets/$id/restore", "POST")
+        try { read(conn) } finally { conn.disconnect() }
     }
 
     fun upload(uri: Uri) {
