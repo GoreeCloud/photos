@@ -23,7 +23,8 @@ jobs:
         run: |
           uv sync --frozen --group dev
           uv run --frozen pytest -q
-          uv run --frozen ruff check .
+          uv run --frozen ruff check . ../scripts
+          uv run --frozen python -m py_compile ../scripts/browser_acceptance.py ../scripts/browser_fixture.py
   web:
     runs-on: ubuntu-24.04
     steps:

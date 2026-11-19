@@ -45,6 +45,10 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 3. Update affected dependencies and validate images in quarantine. Restore only from verified clean backups.
 4. Follow Wardveil incident procedures and GoreeShield notice/minimization guidance once their actual service contracts are available.
 
+## Synthetic Chromium browser-security acceptance
+
+The repository's `scripts/browser_acceptance.py` and `scripts/browser_fixture.py` provide repeatable headless Chromium security UI checks against a temporary local-only FastAPI library. Their CDP control and synthetic media/passwords are not authorized to touch production accounts. They verify session clearing after owner password rotation and cross-device revocation as well as keyboard focus and Escape behavior, then terminate the test services and delete the private temporary browser profile and media. Running headless Chrome with an explicit `--unsafe-no-sandbox` is for a trusted isolated development machine only; prefer browser sandboxing whenever available. Screen reader/assistive technology and cross-browser interaction still require separate acceptance.
+
 ## Pre-release gates
 Run Python tests, static lint, web build, Qt QML runtime check, Android emulator/device test, authorization and file-handling fuzzing, vulnerability scans, license scan, backup/restore drill, and HTTPS ingress verification before production use.
 
