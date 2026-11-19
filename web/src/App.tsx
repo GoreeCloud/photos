@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { boundedBlob, boundedJson, PREVIEW_LIMIT, THUMB_LIMIT } from "./network";
+import { hashSmallFile } from "./import-preflight";
 import { groupImportsByUtcDay } from "./timeline";
 
 type Asset = {
@@ -78,6 +79,7 @@ export default function App() {
   const [preview, setPreview] = useState("");
   const [previewError, setPreviewError] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const activeUpload = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -134,6 +136,11 @@ export default function App() {
   }
 
   function clearPrivateSession(message = "") {
+    // Abort pending browser uploads on Lock; the API may have received any
+    // already-transmitted bytes, so this is best-effort transport cancellation.
+    activeUpload.current?.abort();
+    activeUpload.current = null;
+    if (input.current) input.current.value = "";
     // Invalidate view requests before clearing state; never persist passwords.
     ++requestNumber.current;
     ++sessionEpoch.current;
@@ -300,19 +307,71 @@ export default function App() {
 
   async function uploadFiles(files: FileList | null) {
     if (!files || !files.length) return;
+    const epoch = sessionEpoch.current;
     setBusy(true); setNotice("");
     let uploaded = 0;
+    let skipped = 0;
+    let inTrash = 0;
     try {
       for (const file of Array.from(files)) {
+        // Lock/password rotation cancels queued imports even after a digest or
+        // prior upload completes; no filenames or hashes persist on the client.
+        if (epoch !== sessionEpoch.current) return;
+        const sha256 = await hashSmallFile(file);
+        if (epoch !== sessionEpoch.current) return;
+        if (sha256) {
+          const lookup = await api<{
+            existing: { sha256: string; id: string; trashed: boolean }[]
+          }>(token, "/v1/assets/lookup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hashes: [sha256] })
+          });
+          if (epoch !== sessionEpoch.current) return;
+          const copy = lookup.existing.find(item => item.sha256 === sha256);
+          if (copy) {
+            skipped++;
+            if (copy.trashed) inTrash++;
+            continue; // Never auto-restore or re-upload existing originals.
+          }
+        }
         const body = new FormData();
         body.append("file", file);
-        await api(token, "/v1/assets", { method: "POST", body });
-        uploaded += 1;
+        const controller = new AbortController();
+        activeUpload.current = controller;
+        try {
+          await api(token, "/v1/assets", { method: "POST", body, signal: controller.signal });
+          uploaded++;
+        } catch (error) {
+          // Files larger than the bounded preflight window still deduplicate
+          // at the server. Continue the explicit batch without overwriting.
+          if (!(error instanceof Error) || !error.message.startsWith("Duplicate file")) {
+            throw error;
+          }
+          skipped++;
+        } finally {
+          if (activeUpload.current === controller) activeUpload.current = null;
+        }
       }
-      setNotice(uploaded + " uploaded securely.");
+      if (epoch !== sessionEpoch.current) return;
+      const summary = [
+        uploaded + " uploaded",
+        skipped ? skipped + " already in library; skipped" : "",
+        inTrash ? inTrash + " in trash (restore manually)" : ""
+      ].filter(Boolean).join(" · ");
+      setNotice(summary + ".");
       await refresh();
-    } catch (e) { setNotice(uploaded + " uploaded. " + (e as Error).message); await refresh(); }
-    finally { setBusy(false); if (input.current) input.current.value = ""; }
+    } catch (error) {
+      if (epoch === sessionEpoch.current) {
+        setNotice(uploaded + " uploaded. " + (error as Error).message);
+        await refresh();
+      }
+    } finally {
+      if (epoch === sessionEpoch.current) {
+        setBusy(false);
+        if (input.current) input.current.value = "";
+      }
+    }
   }
 
   async function perform(asset: Asset, action: "favorite" | "delete" | "restore") {

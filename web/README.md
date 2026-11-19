@@ -26,6 +26,8 @@ Private API JSON responses are stream-limited to **4 MiB**; thumbnails to **6 Mi
 
 ## Sign out all devices without rotating the password
 
+A disposable Chromium browser acceptance also exercises duplicate selection and confirms that an authenticated hash lookup occurs without a second media upload; it retains the original library count. The test uses only synthetic media.
+
 The unlocked web **Security** view provides a separate **Sign out all devices without changing password** button. It requires the current masked library password and calls the authenticated `POST /v1/settings/revoke-sessions` endpoint. On confirmed server revocation, the browser immediately clears its session and private library state; failed requests preserve the user's current session but clear the attempted current password field. This does not change the account password, recover access to a lost library, or implement multi-user identity. If a password may be compromised, use password rotation instead. Test the actual browser interaction and assistive technology before production.
 
 ## Reproducible real-browser security acceptance
@@ -43,6 +45,10 @@ uv run --frozen python ../scripts/browser_acceptance.py --chromium /absolute/pat
 If the local Linux sandbox prevents a disposable browser from starting, add `--unsafe-no-sandbox` **only on a trusted development machine**, not for general browsing. The harness starts an isolated **127.0.0.1-only** API and Chromium instance with a private temporary directory, creates one synthetic image and password, exercises the actual React UI through the Chrome DevTools Protocol, then terminates its owned processes and deletes the test profile/media even after failed assertions. It checks login and synthetic gallery, masked fields and autofocus, invalid current-password error semantics, password rotation and private-state erasure, global session revocation, relogin and Escape/field-clearing behavior. It never needs a real library, device gallery, network tunnel, or personal password, and does not modify production data.
 
 This is automated Chromium UI acceptance, **not** a substitute for human keyboard/visual checks, Firefox/WebKit compatibility, NVDA/Orca screen readers, production ingress, signed releases, or genuine recovery tests. The Chromium binary is not distributed by this repository; review its publisher/source before executing.
+
+## Bounded duplicate checks for explicit web imports
+
+When you deliberately select files with **Add photos**, the browser computes a WebCrypto SHA-256 fingerprint **only for files from 1 byte through 16 MiB** and asks the authenticated Photos API `POST /v1/assets/lookup` if that exact content already exists. It skips matching originals, tells you how many were skipped, and warns when an existing copy is in Trash. Nothing is automatically restored from Trash and no local files are scanned outside the selected input. The hash is sent only to the configured private Photos API, not third-party analytics. Files larger than 16 MiB are not buffered for client-side checks: the server still hashes uploads incrementally and returns 409 on duplicates, which the UI treats as skipped without overwriting the original. Browser environments without WebCrypto fall back to server-side deduplication. Locking cancels pending browser uploads and stops queued files; already-received bytes may be processed by the server, so cancellation is best-effort. No background camera-roll access, file permission escalation or permanent hash cache is introduced.
 
 ## Purpose-led photo timeline
 

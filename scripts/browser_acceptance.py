@@ -21,6 +21,7 @@ class Chrome:
     def __init__(self, socket):
         self.socket = socket
         self.counter = 0
+        self.requests: list[tuple[str, str]] = []
 
     async def run(self, method, params=None):
         self.counter += 1
@@ -30,6 +31,12 @@ class Chrome:
         )
         while True:
             packet = json.loads(await asyncio.wait_for(self.socket.recv(), timeout=20))
+            if packet.get("method") == "Network.requestWillBeSent":
+                request = packet.get("params", {}).get("request", {})
+                if len(self.requests) < 128:
+                    self.requests.append(
+                        (str(request.get("method", "")), str(request.get("url", "")))
+                    )
             if packet.get("id") == index:
                 if "error" in packet:
                     raise RuntimeError(str(packet["error"]))
@@ -92,7 +99,7 @@ class Chrome:
             )
 
 
-async def check_browser(app_url: str, cdp_url: str):
+async def check_browser(app_url: str, cdp_url: str, duplicate_input: Path):
     def read_tabs():
         with urllib.request.urlopen(cdp_url + "/json/list", timeout=3) as response:
             return json.load(response)
@@ -103,6 +110,8 @@ async def check_browser(app_url: str, cdp_url: str):
         browser = Chrome(socket)
         await browser.run("Page.enable")
         await browser.run("Runtime.enable")
+        await browser.run("Network.enable")
+        await browser.run("DOM.enable")
         await browser.run("Page.navigate", {"url": app_url})
         await browser.wait(
             'Boolean(document.querySelector("input#password"))', "initial login"
@@ -128,6 +137,32 @@ async def check_browser(app_url: str, cdp_url: str):
         )
         print("PASS: UTC import timeline and accessible library details disclosure", flush=True)
         print("PASS: Chromium login and synthetic gallery", flush=True)
+        document = await browser.run("DOM.getDocument", {"depth": 1})
+        picker = await browser.run(
+            "DOM.querySelector",
+            {"nodeId": document["root"]["nodeId"], "selector": "#fileUpload"},
+        )
+        assert picker["nodeId"] > 0, "Explicit upload input is missing"
+        await browser.run(
+            "DOM.setFileInputFiles",
+            {"nodeId": picker["nodeId"], "files": [str(duplicate_input)]},
+        )
+        await browser.wait(
+            'document.body.innerText.includes("already in library; skipped")',
+            "browser duplicate import skip",
+        )
+        assert any(
+            method == "POST" and url.endswith("/v1/assets/lookup")
+            for method, url in browser.requests
+        ), "Web duplicate lookup was not requested"
+        assert not any(
+            method == "POST" and url.endswith("/v1/assets")
+            for method, url in browser.requests
+        ), "Duplicate input should not trigger re-upload"
+        assert await browser.js(
+            'document.querySelector(".section-head span")?.textContent.includes("1 total")'
+        )
+        print("PASS: private duplicate preflight skips upload without restoring media", flush=True)
         await browser.click("Security")
         await browser.wait(
             'document.activeElement?.id==="photos-current-secret"', "security autofocus"
@@ -336,7 +371,9 @@ def run():
                 wait_for_service(
                     cdp_url + "/json/version", browser_process, "Disposable Chromium"
                 )
-                asyncio.run(check_browser(app_url, cdp_url))
+                asyncio.run(
+                    check_browser(app_url, cdp_url, temp / "synthetic-duplicate-selected.png")
+                )
                 print("PASS: full synthetic Chromium acceptance suite", flush=True)
             finally:
                 stop_owned_process(browser_process)
