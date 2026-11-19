@@ -128,6 +128,38 @@ class PhotosApi(private val context: Context) {
 
     fun logout() = revokeSession(clearSession())
 
+    private fun ownerAction(path: String, payload: JSONObject) {
+        val previous = token ?: error("Unlock the library first")
+        val call = connection(path, "POST", previous)
+        try {
+            call.doOutput = true
+            call.setRequestProperty("Content-Type", "application/json")
+            call.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            val result = JSONObject(read(call))
+            check(result.optBoolean("sessions_revoked", false)) {
+                "Server did not confirm revocation"
+            }
+            if (path == "/v1/settings/password") {
+                check(result.optBoolean("changed", false)) {
+                    "Server did not confirm password rotation"
+                }
+            }
+            check(token == previous) { "Library locked during operation" }
+            token = null
+        } finally { call.disconnect() }
+    }
+
+    fun rotateLibraryPassword(current: String, replacement: String, confirmation: String) {
+        validateOwnerRotation(current, replacement, confirmation)
+        ownerAction("/v1/settings/password", JSONObject()
+            .put("current_password", current).put("new_password", replacement))
+    }
+
+    fun revokeAllSessions(current: String) {
+        validateOwnerSecret(current)
+        ownerAction("/v1/settings/revoke-sessions", JSONObject().put("password", current))
+    }
+
     /** Server-paged library query, including trash. Does not scan device storage. */
     fun photosPage(
         view: LibraryView = LibraryView.ALL, search: String = "", page: Int = 0
