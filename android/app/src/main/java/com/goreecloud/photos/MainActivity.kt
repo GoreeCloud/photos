@@ -256,7 +256,13 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 Scaffold(topBar = {
-                    Surface(shadowElevation = 2.dp) {
+                    // Android 15+ draws edge-to-edge by default. Reserve the actual
+                    // status-bar inset so Security/Lock cannot sit underneath
+                    // system-owned touch targets on physical Android devices.
+                    Surface(
+                        modifier = Modifier.statusBarsPadding(),
+                        shadowElevation = 2.dp
+                    ) {
                         Row(Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text("✦ Photos", style = MaterialTheme.typography.titleLarge,

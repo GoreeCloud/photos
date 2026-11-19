@@ -84,8 +84,14 @@ internal fun OwnerSecurityDialog(
             }
         },
         confirmButton = {
-            Column {
+            // Keep all actions in one vertical layout. Using separate Material
+            // confirm/dismiss slots overlapped Revoke and Cancel on Android 16.
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 TextButton(
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = !busy && current.isNotEmpty() &&
                         replacement.isNotEmpty() && confirmation.isNotEmpty(),
                     onClick = {
@@ -103,18 +109,19 @@ internal fun OwnerSecurityDialog(
                     },
                 ) { Text("Change password and sign out devices") }
                 TextButton(
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = !busy && current.isNotEmpty(),
                     onClick = {
                         val old = current
                         wipe()
                         onRevoke(old)
                     },
-                ) { Text("Sign out all devices without changing password") }
-            }
-        },
-        dismissButton = {
-            TextButton(enabled = !busy, onClick = { wipe(); onDismiss() }) {
-                Text("Cancel")
+                ) { Text("Sign out devices; keep password") }
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    onClick = { wipe(); onDismiss() },
+                ) { Text("Cancel") }
             }
         },
     )
