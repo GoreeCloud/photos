@@ -41,6 +41,18 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m py_compile linux/main.py
+      - name: Qt Quick 6.12 headless QML launch smoke
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libxkbcommon0 libfontconfig1
+          python -m pip install --only-binary=:all: --disable-pip-version-check -r linux/requirements.txt
+          set +e
+          timeout 4s env QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python linux/main.py --server http://127.0.0.1:8787 > qt-smoke.log 2>&1
+          rc=$?
+          set -e
+          cat qt-smoke.log
+          # Running GUI times out; an import/QML/plugin error exits before timeout.
+          test "$rc" -eq 124
   android:
     runs-on: ubuntu-24.04
     steps:
