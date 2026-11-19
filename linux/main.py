@@ -51,6 +51,8 @@ class Bridge(QObject):
         self.manager = QNetworkAccessManager(self)
         self._token = ""
         self._items = []
+        self._albums = []
+        self._album_id = ""
         self._generation = 0
         self._view = "library"
         self._search = ""
@@ -64,6 +66,10 @@ class Bridge(QObject):
     @Property("QVariantList", notify=libraryChanged)
     def items(self):
         return self._items
+
+    @Property("QVariantList", notify=libraryChanged)
+    def albums(self):
+        return self._albums
 
     @Property(str, notify=libraryChanged)
     def view(self):
@@ -86,8 +92,73 @@ class Bridge(QObject):
         if view not in ("library", "favorites", "trash"):
             return
         self._view = view
+        self._album_id = ""
         self._page = 0
         self.refresh()
+
+    @Slot()
+    def refreshAlbums(self):
+        if not self._token:
+            return
+        generation = self._generation
+        def done(data):
+            if not self._token or generation != self._generation:
+                return
+            self._albums = data.get("items", [])
+            self.libraryChanged.emit()
+        self.send("GET", "/v1/albums", callback=done)
+
+    @Slot(str)
+    def viewAlbum(self, album_id):
+        if not any(album.get("id") == album_id for album in self._albums):
+            self.error.emit("Select an available album")
+            return
+        self._view = "album"
+        self._album_id = album_id
+        self._page = 0
+        self.refresh()
+
+    @Slot(str)
+    def createAlbum(self, name):
+        name = name.strip()
+        if not self._token or not 1 <= len(name) <= 100:
+            self.error.emit("Album name must contain 1-100 characters")
+            return
+        def done(data):
+            self.message.emit("Album created")
+            self.refreshAlbums()
+            # Backend is the authority. Refresh albums so the new ID becomes selectable.
+        self.send("POST", "/v1/albums", {"name": name}, done)
+
+    @Slot(str, str)
+    def addToAlbum(self, album_id, asset_id):
+        if not self._token or self._view == "trash":
+            self.error.emit("Unlock an active library view")
+            return
+        if not any(album.get("id") == album_id for album in self._albums):
+            self.error.emit("Select an available album")
+            return
+        if not any(asset.get("id") == asset_id for asset in self._items):
+            self.error.emit("Choose an available photo")
+            return
+        self.send(
+            "POST", f"/v1/albums/{album_id}/assets/{asset_id}",
+            callback=lambda _: (self.message.emit("Added to album"), self.refreshAlbums())
+        )
+
+    @Slot(str)
+    def removeFromAlbum(self, asset_id):
+        if not self._token or self._view != "album" or not self._album_id:
+            self.error.emit("Select an album first")
+            return
+        if not any(asset.get("id") == asset_id for asset in self._items):
+            self.error.emit("Choose a member of this album")
+            return
+        self.send(
+            "DELETE", f"/v1/albums/{self._album_id}/assets/{asset_id}",
+            callback=lambda _: (self.message.emit("Removed from album; original preserved"),
+                                self.refresh(), self.refreshAlbums())
+        )
 
     @Slot(str)
     def setSearch(self, value):
@@ -143,6 +214,7 @@ class Bridge(QObject):
             self._token = data["access_token"]
             self.loggedInChanged.emit()
             self.refresh()
+            self.refreshAlbums()
         self.send("POST", "/v1/session", {"password": password}, done)
 
     @Slot()
@@ -152,6 +224,8 @@ class Bridge(QObject):
         self._token = ""
         self._generation += 1
         self._items = []
+        self._albums = []
+        self._album_id = ""
         self._total = 0
         self._page = 0
         self.provider.images.clear()
@@ -185,7 +259,14 @@ class Bridge(QObject):
             "trashed": str(self._view == "trash").lower(),
             "search": self._search,
         })
-        self.send("GET", "/v1/assets?" + query, callback=done)
+        if self._view == "album" and self._album_id:
+            query = urlencode({
+                "limit": 60, "offset": self._page * 60, "search": self._search,
+            })
+            path = f"/v1/albums/{self._album_id}/assets?" + query
+        else:
+            path = "/v1/assets?" + query
+        self.send("GET", path, callback=done)
 
     def fetch_thumb(self, asset_id, generation):
         request = QNetworkRequest(QUrl(self.server + "/v1/assets/" + asset_id + "/thumbnail"))

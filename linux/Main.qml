@@ -114,6 +114,47 @@ ApplicationWindow {
             }
         }
 
+        RowLayout {
+            visible: photosBridge.loggedIn
+            Layout.fillWidth: true
+            spacing: 10
+            ComboBox {
+                id: albumSelection
+                Layout.preferredWidth: 170
+                model: photosBridge.albums
+                textRole: "name"
+                valueRole: "id"
+                Accessible.name: "Choose album"
+            }
+            Button {
+                text: "Open album"
+                enabled: albumSelection.count > 0
+                onClicked: photosBridge.viewAlbum(albumSelection.currentValue)
+            }
+            TextField {
+                id: newAlbumName
+                Layout.fillWidth: true
+                placeholderText: "New album name"
+                Accessible.name: "New album name"
+                maximumLength: 100
+                onAccepted: {
+                    photosBridge.createAlbum(text)
+                    text = ""
+                }
+            }
+            Button {
+                text: "Create"
+                onClicked: {
+                    photosBridge.createAlbum(newAlbumName.text)
+                    newAlbumName.text = ""
+                }
+            }
+            Button {
+                text: "All"
+                onClicked: photosBridge.setView("library")
+            }
+        }
+
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -123,7 +164,7 @@ ApplicationWindow {
                 id: grid
                 model: photosBridge.items
                 cellWidth: 192
-                cellHeight: 240
+                cellHeight: 325
                 clip: true
                 delegate: Rectangle {
                     width: grid.cellWidth - 12
@@ -140,7 +181,7 @@ ApplicationWindow {
                                 ? "image://preview/" + modelData.id + "?v=" + (modelData.thumbVersion || "0")
                                 : ""
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 155
+                            Layout.preferredHeight: 175
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             sourceSize.width: 350
@@ -172,6 +213,21 @@ ApplicationWindow {
                                 text: "Restore"
                                 visible: photosBridge.view === "trash"
                                 onClicked: photosBridge.restore(modelData.id)
+                            }
+                        }
+                        RowLayout {
+                            visible: photosBridge.view !== "trash"
+                            Button {
+                                text: "Add to album"
+                                visible: photosBridge.view !== "album" && albumSelection.count > 0
+                                Accessible.name: "Add " + modelData.filename + " to selected album"
+                                onClicked: photosBridge.addToAlbum(albumSelection.currentValue, modelData.id)
+                            }
+                            Button {
+                                text: "Remove from album"
+                                visible: photosBridge.view === "album"
+                                Accessible.name: "Remove " + modelData.filename + " from this album without deleting original"
+                                onClicked: photosBridge.removeFromAlbum(modelData.id)
                             }
                         }
                     }
