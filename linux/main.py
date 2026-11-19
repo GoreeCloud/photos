@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-from PySide6.QtCore import QBuffer, QByteArray, QFile, QIODevice, QObject, Property, QUrl, Signal, Slot
+from PySide6.QtCore import Qt, QBuffer, QByteArray, QFile, QIODevice, QObject, Property, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QImage, QImageReader
 from PySide6.QtNetwork import QHttpMultiPart, QHttpPart, QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtQml import QQmlApplicationEngine
@@ -61,7 +61,10 @@ class ThumbnailProvider(QQuickImageProvider):
     def requestImage(self, image_id, size, requested_size):
         image = QImage.fromData(self.images.get(image_id.split("?")[0], b""))
         if not image.isNull() and requested_size.isValid():
-            image = image.scaled(requested_size)
+            image = image.scaled(
+                requested_size, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
         return image
 
 

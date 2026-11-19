@@ -14,6 +14,6 @@
 
 ## Implemented versus unverified
 
-The web gallery has source-implemented image-first responsive tiles, adjacent UTC import-day sections, accessible media actions, and collapsed library metrics. Linux uses its native Qt Quick gallery with responsive visual tiles; Android uses Jetpack Compose with opt-in foreground imports. These three experiences are not claimed to be identical or fully accepted.
+The web gallery has source-implemented image-first responsive tiles, adjacent UTC import-day sections, accessible media actions, and collapsed library metrics. Linux uses its native Qt Quick gallery with responsive visual tiles and an authenticated, aspect-ratio-preserving thumbnail-only preview; Android uses Jetpack Compose with opt-in foreground imports and its own private thumbnail preview. These three experiences are not claimed to be identical or fully accepted.
 
 Before production: visually review representative real libraries, keyboard Tab order, contrast, photo crop behavior, small screens, dynamic text sizes, TalkBack/Orca/NVDA, zoom and reduced-motion preferences. Never interpret the existence of CSS/QML or passing static CI as proof of accessibility or real-device usability.
