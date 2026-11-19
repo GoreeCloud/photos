@@ -32,6 +32,7 @@ Compose Android┘                 ├── /data/objects/xx/<sha256>.<ext>
 | GET | `/health` | Health status, no sensitive details |
 | POST/DELETE | `/v1/session` | Log in and revoke |
 | GET/POST | `/v1/assets` | List/upload |
+| GET | `/v1/library/stats` | Authenticated aggregate counts and total original bytes, no media names or paths |
 | POST | `/v1/assets/lookup` | Authenticated SHA-256 duplicate preflight (max 100 hashes; reports trashed matches without restoring) |
 | GET | `/v1/assets/{id}/thumbnail` | Private image preview |
 | GET | `/v1/assets/{id}/original` | Private media stream with byte ranges |
