@@ -367,6 +367,19 @@ def restore(archive: Path, data_dir: Path) -> dict:
             for rel in originals:
                 if digest_file(stage / rel) != PurePosixPath(rel).name[:64]:
                     raise ValueError("Restored original hash mismatch")
+            # A backup may contain a recently minted bearer-token digest.
+            # Never re-activate archived sessions in a restored library.
+            # Preserve the stored owner password hash and library metadata.
+            with sqlite3.connect(stage / "photos.sqlite3") as db:
+                db.execute("BEGIN IMMEDIATE")
+                db.execute("DELETE FROM sessions")
+                # Older v1 backups may predate the SQLite failure tracker.
+                if db.execute(
+                    "SELECT 1 FROM sqlite_master "
+                    "WHERE type='table' AND name='auth_failures'"
+                ).fetchone():
+                    db.execute("DELETE FROM auth_failures")
+            sqlite_integrity(stage / "photos.sqlite3")
             os.rename(stage, target)
             return {"files": len(checksums), "assets": len(originals), "restored_to": str(target)}
 
