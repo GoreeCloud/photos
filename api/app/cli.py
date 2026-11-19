@@ -200,6 +200,7 @@ def parse_args(argv: list[str] | None = None):
     photos.add_argument("--limit", type=int, default=60)
     photos.add_argument("--page", type=int, default=1)
     sub.add_parser("albums", help="List private albums")
+    sub.add_parser("stats", help="Read private library counts and original storage bytes")
     creation = sub.add_parser("create-album", help="Create a private album")
     creation.add_argument("name")
     up = sub.add_parser("upload", help="Upload one explicit local media file")
@@ -250,6 +251,8 @@ def run(args):
             return api.request("GET", "/v1/assets?" + query)
         if args.command == "albums":
             return api.request("GET", "/v1/albums")
+        if args.command == "stats":
+            return api.request("GET", "/v1/library/stats")
         if args.command == "create-album":
             if not 1 <= len(args.name.strip()) <= 100:
                 raise PhotosError("Album name must be 1–100 characters")
