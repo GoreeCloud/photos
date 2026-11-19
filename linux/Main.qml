@@ -75,6 +75,36 @@ ApplicationWindow {
             }
         }
 
+        RowLayout {
+            visible: photosBridge.loggedIn
+            Layout.fillWidth: true
+            spacing: 12
+
+            ComboBox {
+                id: libraryView
+                model: ["All photos", "Favorites", "Trash"]
+                Accessible.name: "Library view"
+                onActivated: function(index) {
+                    photosBridge.setView(["library", "favorites", "trash"][index])
+                }
+            }
+            TextField {
+                id: librarySearch
+                Layout.fillWidth: true
+                placeholderText: "Search filenames"
+                Accessible.name: "Search photo filenames"
+                onAccepted: photosBridge.setSearch(text)
+            }
+            Button {
+                text: "Search"
+                onClicked: photosBridge.setSearch(librarySearch.text)
+            }
+            Button {
+                text: "Clear"
+                onClicked: { librarySearch.text = ""; photosBridge.setSearch("") }
+            }
+        }
+
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -110,14 +140,44 @@ ApplicationWindow {
                         Label { text: modelData.filename; Layout.fillWidth: true; elide: Label.ElideRight }
                         RowLayout {
                             Button {
+                                visible: photosBridge.view !== "trash"
                                 text: modelData.favorite ? "♥" : "♡"
                                 Accessible.name: modelData.favorite ? "Remove favorite" : "Add favorite"
                                 onClicked: photosBridge.favorite(modelData.id, !modelData.favorite)
                             }
-                            Button { text: "Trash"; onClicked: photosBridge.trash(modelData.id) }
+                            Button {
+                                text: "Trash"
+                                visible: photosBridge.view !== "trash"
+                                onClicked: photosBridge.trash(modelData.id)
+                            }
+                            Button {
+                                text: "Restore"
+                                visible: photosBridge.view === "trash"
+                                onClicked: photosBridge.restore(modelData.id)
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        RowLayout {
+            visible: photosBridge.loggedIn
+            Layout.fillWidth: true
+            Label {
+                Layout.fillWidth: true
+                text: photosBridge.total + " items · Page " +
+                      photosBridge.currentPage + " of " + photosBridge.pageCount
+            }
+            Button {
+                text: "Previous"
+                enabled: photosBridge.currentPage > 1
+                onClicked: photosBridge.changePage(-1)
+            }
+            Button {
+                text: "Next"
+                enabled: photosBridge.currentPage < photosBridge.pageCount
+                onClicked: photosBridge.changePage(1)
             }
         }
     }
