@@ -21,3 +21,8 @@ Authenticated JSON responses are bounded to 4 MiB and thumbnail responses to 6 M
 ## Native owner security
 
 The unlocked Qt Quick **Security** dialog uses masked current/new/confirmation fields, a dedicated password-rotation button, and a separate **Sign out all devices without changing password** button. Both call the server's bearer-authenticated API and require the current library password. On success the server revokes all sessions and the native client immediately clears its token, media previews, albums, search and selected view before returning to Unlock. Draft secrets are cleared after submission, Cancel or Escape; this app does not save credentials. Server-side persistent throttling protects repeated wrong-password attempts. Signing out without rotation is not adequate if the password itself is compromised. Assistive-technology and distribution acceptance remain outstanding.
+
+
+## Photo-first native gallery
+
+The Qt Quick library now sizes media tiles to its window width rather than fixing every grid column to 192 pixels. Each card prioritizes a nearly-square cropped private image preview, with clearly identified video placeholders, followed by the original filename and explicit favorite, save, album and trash actions. Images remain fetched from authenticated API responses and held in the existing memory-only thumbnail provider; no filesystem or camera access is added. Resizing, scaling and contrast must still be accepted on representative real Linux desktops.

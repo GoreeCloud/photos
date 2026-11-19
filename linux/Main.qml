@@ -267,8 +267,11 @@ ApplicationWindow {
             GridView {
                 id: grid
                 model: photosBridge.items
-                cellWidth: 192
-                cellHeight: 325
+                // A native photo gallery adapts its square-ish image tiles
+                // to the available window width without a fixed column count.
+                readonly property int columns: Math.max(1, Math.floor(width / 218))
+                cellWidth: width / columns
+                cellHeight: 365
                 clip: true
                 delegate: Rectangle {
                     width: grid.cellWidth - 12
@@ -280,18 +283,40 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 6
-                        Image {
-                            source: modelData.media_type.indexOf("image/") === 0
-                                ? "image://preview/" + modelData.id + "?v=" + (modelData.thumbVersion || "0")
-                                : ""
+                        Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 175
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            sourceSize.width: 350
-                            sourceSize.height: 350
+                            Layout.preferredHeight: 205
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 12
+                                color: palette.midlight
+                                visible: modelData.media_type.indexOf("video/") === 0
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "▶ Video"
+                                    font.bold: true
+                                    Accessible.name: "Video file"
+                                }
+                            }
+                            Image {
+                                anchors.fill: parent
+                                source: modelData.media_type.indexOf("image/") === 0
+                                    ? "image://preview/" + modelData.id + "?v="
+                                        + (modelData.thumbVersion || "0")
+                                    : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 410
+                                sourceSize.height: 410
+                            }
                         }
-                        Label { text: modelData.filename; Layout.fillWidth: true; elide: Label.ElideRight }
+                        Label {
+                            text: modelData.filename
+                            Accessible.name: "Photo filename " + modelData.filename
+                            Layout.fillWidth: true
+                            elide: Label.ElideRight
+                        }
                         RowLayout {
                             Button {
                                 visible: photosBridge.view !== "trash"
