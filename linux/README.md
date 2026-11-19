@@ -26,3 +26,10 @@ The unlocked Qt Quick **Security** dialog uses masked current/new/confirmation f
 ## Photo-first native gallery
 
 The Qt Quick library now sizes media tiles to its window width rather than fixing every grid column to 192 pixels. Each card prioritizes a nearly-square cropped private image preview, with clearly identified video placeholders, followed by the original filename and explicit favorite, save, album and trash actions. Images remain fetched from authenticated API responses and held in the existing memory-only thumbnail provider; no filesystem or camera access is added. Resizing, scaling and contrast must still be accepted on representative real Linux desktops.
+
+## Tap-to-open private previews
+
+The native photo tiles are keyboard-focusable Qt Quick buttons. Opening an active tile shows a modal built with Qt Quick Controls and the already authenticated, in-memory EXIF-stripped thumbnail provider. Video entries are explicitly marked as not previewable; both photo and video dialogs can open the user's native Save-original file picker. Trashed items require restoration before preview and a library Lock or global session revocation closes the dialog and clears its selected media reference. No full-resolution original is loaded into the Qt preview, no background media indexing occurs, and no new dependency is introduced. Real desktop pointer, keyboard and screen-reader acceptance remains pending.
+
+
+Private Qt thumbnails preserve source aspect ratio when scaled, disable image-source caches, and update the modal preview if its in-memory thumbnail arrives after opening. The preview automatically closes if the selected media is no longer part of the visible collection, including after filtering, page changes or trash; the file picker remains backed by the same authenticated original-download validation. The preview is never a full-resolution original viewer.

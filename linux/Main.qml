@@ -13,6 +13,10 @@ ApplicationWindow {
     title: "GoreeCloud Photos"
     color: palette.window
     property string pendingDownloadId: ""
+    property string previewId: ""
+    property string previewName: ""
+    property string previewMediaType: ""
+    property string previewVersion: ""
 
     FileDialog {
         id: picker
@@ -125,8 +129,89 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: previewDialog
+        title: window.previewName
+        modal: true
+        focus: true
+        width: Math.min(window.width - 36, 720)
+        height: Math.min(window.height - 36, 580)
+        anchors.centerIn: parent
+        closePolicy: Popup.CloseOnEscape
+        standardButtons: Dialog.Close
+        onClosed: {
+            window.previewId = ""
+            window.previewName = ""
+            window.previewMediaType = ""
+            window.previewVersion = ""
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Image {
+                    anchors.fill: parent
+                    visible: window.previewMediaType.indexOf("image/") === 0
+                    source: visible && window.previewId.length > 0
+                        ? "image://preview/" + window.previewId
+                            + "?v=" + window.previewVersion : ""
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    cache: false
+                    sourceSize.width: 512
+                    sourceSize.height: 512
+                    Accessible.name: "Private thumbnail preview of " + window.previewName
+                }
+                Label {
+                    anchors.centerIn: parent
+                    visible: window.previewMediaType.indexOf("video/") === 0
+                    text: "Video preview unavailable"
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                text: "Private low-resolution preview. Save the original for full quality."
+                wrapMode: Text.WordWrap
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Save original"
+                Accessible.name: "Save original " + window.previewName
+                enabled: photosBridge.loggedIn && photosBridge.view !== "trash"
+                onClicked: {
+                    window.pendingDownloadId = window.previewId
+                    previewDialog.close()
+                    savePicker.open()
+                }
+            }
+        }
+    }
+
     Connections {
         target: photosBridge
+        function onLoggedInChanged() {
+            if (!photosBridge.loggedIn) previewDialog.close()
+        }
+        function onLibraryChanged() {
+            if (!previewDialog.opened) return
+            if (!photosBridge.loggedIn || photosBridge.view === "trash") {
+                previewDialog.close()
+                return
+            }
+            let found = false
+            for (const item of photosBridge.items) {
+                if (item.id !== window.previewId) continue
+                window.previewVersion = item.thumbVersion || "0"
+                found = true
+                break
+            }
+            // A navigation, trash action or page change must never leave a
+            // previous private media item visible in the new library view.
+            if (!found) previewDialog.close()
+        }
         function onError(text) {
             message.text = text
             if (securityDialog.opened) securityDialog.feedback = text
@@ -283,32 +368,44 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 6
-                        Item {
+                        Button {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 205
-
-                            Rectangle {
-                                anchors.fill: parent
+                            padding: 0
+                            enabled: photosBridge.view !== "trash"
+                            Accessible.name: "Open private preview of " + modelData.filename
+                            onClicked: {
+                                window.previewId = modelData.id
+                                window.previewName = modelData.filename
+                                window.previewMediaType = modelData.media_type
+                                window.previewVersion = modelData.thumbVersion || "0"
+                                previewDialog.open()
+                            }
+                            background: Rectangle {
                                 radius: 12
                                 color: palette.midlight
-                                visible: modelData.media_type.indexOf("video/") === 0
+                            }
+                            contentItem: Item {
                                 Label {
                                     anchors.centerIn: parent
+                                    visible: modelData.media_type.indexOf("video/") === 0
                                     text: "▶ Video"
                                     font.bold: true
                                     Accessible.name: "Video file"
                                 }
-                            }
-                            Image {
-                                anchors.fill: parent
-                                source: modelData.media_type.indexOf("image/") === 0
-                                    ? "image://preview/" + modelData.id + "?v="
-                                        + (modelData.thumbVersion || "0")
-                                    : ""
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                sourceSize.width: 410
-                                sourceSize.height: 410
+                                Image {
+                                    anchors.fill: parent
+                                    visible: modelData.media_type.indexOf("image/") === 0
+                                    source: visible
+                                        ? "image://preview/" + modelData.id + "?v="
+                                            + (modelData.thumbVersion || "0")
+                                        : ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    cache: false
+                                    sourceSize.width: 410
+                                    sourceSize.height: 410
+                                }
                             }
                         }
                         Label {
