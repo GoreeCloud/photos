@@ -32,3 +32,8 @@ Authenticated API JSON bodies are capped at 4 MiB before buffering, and thumbnai
 ## Native owner-security controls
 
 In an unlocked library, Android's **Security** dialog offers password rotation (masked current/new/confirm fields) and a separate owner-confirmed **Sign out all devices without changing password** action. Both require the current library credential and use the existing authenticated API; successful confirmation revokes all sessions and removes the Android bearer token and sensitive gallery/album state immediately. An unsuccessful request retains the current session but clears draft secrets. No password is saved to preferences, no new permission is added, and the actions do not enable multi-user accounts or SSO. Revoke-only is insufficient when the password itself may be compromised. Synthetic validation unit tests cover length, mismatch and unchanged-secret rejection; real device and assistive-technology acceptance remain separate release gates.
+
+
+## Android 15/16 system-bar safety
+
+The Compose top bar applies `Modifier.statusBarsPadding()` so library actions, particularly the Security and Lock controls, remain below the Android system status bar with edge-to-edge rendering enforced on modern Android. This was added after physical Android 16 testing exposed a visually rendered but touch-inaccessible top row. The full native UI must still undergo visual, TalkBack and responsive validation on representative screen sizes.
