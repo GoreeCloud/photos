@@ -34,15 +34,24 @@ class Settings:
     data_dir: Path
     admin_password: str | None
     cors_origins: tuple[str, ...] = ("http://localhost:5173", "http://127.0.0.1:5173")
+    max_library_bytes: int | None = None
 
 
 def from_env() -> Settings:
+    quota_raw = os.environ.get("PHOTOS_MAX_LIBRARY_BYTES", "").strip()
+    try:
+        quota = int(quota_raw) if quota_raw else None
+    except ValueError as error:
+        raise RuntimeError("PHOTOS_MAX_LIBRARY_BYTES must be a positive byte count") from error
+    if quota is not None and quota <= 0:
+        raise RuntimeError("PHOTOS_MAX_LIBRARY_BYTES must be a positive byte count")
     return Settings(
         Path(os.environ.get("PHOTOS_DATA_DIR", "./data")).resolve(),
         os.environ.get("PHOTOS_ADMIN_PASSWORD"),
         tuple(s.strip() for s in os.environ.get(
             "PHOTOS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
         ).split(",") if s.strip()),
+        quota,
     )
 
 
@@ -168,6 +177,8 @@ class HashLookupIn(BaseModel):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or from_env()
+    if settings.max_library_bytes is not None and settings.max_library_bytes <= 0:
+        raise ValueError("The configured storage quota must be positive")
     init_storage(settings)
     app = FastAPI(title="GoreeCloud Photos", version="0.1.0", docs_url=None, redoc_url=None)
     app.add_middleware(
@@ -312,6 +323,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "trashed": result["trashed"], "favorites": result["favorites"],
             "images": result["images"], "videos": result["videos"],
             "original_bytes": result["original_bytes"], "albums": albums,
+            "quota_bytes": settings.max_library_bytes,
+            "remaining_bytes": max(0, settings.max_library_bytes - result["original_bytes"])
+            if settings.max_library_bytes is not None else None,
         }
 
     @app.get("/v1/assets", dependencies=[Depends(authorized)])
@@ -395,6 +409,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 existing = db.execute("SELECT id FROM assets WHERE sha256=?", (digest,)).fetchone()
                 if existing:
                     raise HTTPException(409, f"Duplicate file (asset {existing['id']})")
+                if settings.max_library_bytes is not None:
+                    used = db.execute(
+                        "SELECT COALESCE(SUM(bytes),0) FROM assets"
+                    ).fetchone()[0]
+                    if used + size > settings.max_library_bytes:
+                        raise HTTPException(413, "Library storage quota reached")
                 if not target.exists():
                     os.replace(temp_path, target)
                     temp_path = None

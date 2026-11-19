@@ -12,3 +12,6 @@ Run `npm ci && npm run build`. Test a private library with more than 36 assets, 
 
 
 Authenticated library statistics use `GET /v1/library/stats` to show active, favorite and trashed counts and bytes of stored originals. They never reveal filenames or hashes, and the stats state is cleared on Lock. Storage totals include originals in trash; this does not imply permanent deletion or storage reclamation.
+
+
+If an administrator explicitly sets `PHOTOS_MAX_LIBRARY_BYTES`, the private storage summary reports quota usage and remaining original-media bytes. It tolerates older API responses without quota fields. Trashed originals count toward the configured allowance; this is not a physical disk-free-space estimate or an automatic purge.

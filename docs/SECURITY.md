@@ -23,7 +23,7 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 - Compose binds only to loopback, drops Linux capabilities, and uses a non-root user.
 - Serve behind TLS with strict network egress, size/time limits, and IP throttling.
 - Prefer one API instance against a single SQLite volume. Login failures are tracked transactionally for 15 minutes in SQLite across local processes using per-library HMACs of network peers, not raw IPs. Place a separate gateway rate limiter in front of any publicly accessible reverse proxy: its shared loopback peer may not identify individual clients.
-- Keep database and media directories mode 0700. Apply private volume backups and storage quotas.
+- Keep database and media directories mode 0700. Apply private volume backups and storage quotas. Optional `PHOTOS_MAX_LIBRARY_BYTES` enforces an atomic original-byte limit including trash; all uploads still require free space for temporary data, previews and SQLite. No automatic deletion or disk-space guarantee is implied.
 - Do not execute uploaded content; previews are decoded by Pillow, an untrusted media parser that requires timely updates.
 - Image uploads are rejected above 50 megapixels before full decoding. Identical concurrent uploads are serialized at the metadata transaction boundary so one succeeds and others receive a duplicate response.
 - The MP4 signature check is not a full decoder validation. An uploaded MP4 should not be processed by ffmpeg before an isolated media-processing sandbox exists.
