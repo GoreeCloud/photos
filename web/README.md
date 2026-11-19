@@ -2,7 +2,7 @@
 
 The React app pages the main library through the authenticated API at 36 items per page. Filters and filename search reset pagination, and stale requests are ignored so rapid navigation cannot replace newer results.
 
-Album listing currently uses the original all-members API and applies client-side filtering/pagination; this is a compatibility bridge, **not** a scalable server-side album paginator. Future work should paginate album membership in the API without breaking existing clients.
+Album listing now uses server-side filtering and paging through `/v1/albums/{id}/assets?limit=36&offset=...&search=...`. Omitting those parameters retains the original complete-list API contract for older clients. Album owners can rename or delete an album, and remove individual members without deleting original media. Album deletion requires an explicit confirmation in the web UI.
 
 ## Local acceptance
 
