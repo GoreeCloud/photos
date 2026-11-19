@@ -8,7 +8,7 @@
 - **GoreeCloud UI:** uses a pinned canonical token CSS snapshot from `gc-ui` for web. Native clients require independent visual/accessibility QA.
 
 ## Data model and backup
-Persistent state is `PHOTOS_DATA_DIR/photos.sqlite3`, `objects/` and `previews/`. Store the entire directory on a private encrypted host volume when possible. An **offline manual** `python -m app.backup backup` / `restore` utility snapshots SQLite, copies referenced originals and available previews, and embeds SHA-256 checksums. Restore validates file types, paths, all checksums, database health, and media integrity before promoting to a new destination. Run both in a secure private environment; **backups are not encrypted**, and **there is no backup schedule, network replication, or proven off-site restore plan**. Stop all API writers during backup and restore before relying on one for disaster recovery. Test a real full-size restore before production use.
+Persistent state is `PHOTOS_DATA_DIR/photos.sqlite3`, `objects/` and `previews/`. Store the entire directory on a private encrypted host volume when possible. An **offline manual** `python -m app.backup backup` / `restore` utility snapshots SQLite, copies referenced originals and available previews, and embeds SHA-256 checksums. The new `python -m app.backup verify --input /private/backups/photos.tar` command independently checks the untrusted archive in read-only mode (except for a private temporary SQLite copy), including member paths, byte bounds, database integrity, content hashes, and database/media index membership, without creating a restore target. Restore validates file types, paths, all checksums, database health, and media integrity before promoting to a new destination. Run both in a secure private environment; **backups are not encrypted**, and **there is no backup schedule, network replication, or proven off-site restore plan**. Stop all API writers during backup and restore before relying on one for disaster recovery. Test a real full-size restore before production use.
 
 The password hash is scrypt with a random per-library 16-byte salt. Session tokens are random 256-bit URL-safe tokens stored in SQLite as SHA-256 digests, expiring after 24 hours; revocation applies on lock. Passwords and tokens should never be stored in logs or shell history. Browser token resides in React component memory, Android in process memory, Linux in process memory; all expire on process exit or API time.
 
@@ -25,6 +25,7 @@ The password hash is scrypt with a random per-library 16-byte salt. Session toke
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
 - No server-side token rotation or password-change endpoint exists yet. Recover using isolated DB administrative procedures, not public endpoints.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.
+- Private `GET /v1/library/stats` returns bounded aggregate counters only; it requires the same bearer authorization as the library and never includes source filenames, paths, or hashes.
 - CORS does not replace authentication; do not add wildcard allowed origins.
 
 ## Response to incidents

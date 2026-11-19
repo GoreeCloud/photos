@@ -220,6 +220,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                        (hashlib.sha256(authorization[7:].encode()).hexdigest(),))
         return Response(status_code=204)
 
+    @app.get("/v1/library/stats", dependencies=[Depends(authorized)])
+    def library_stats():
+        """Private aggregate counts; never exposes filenames, paths or source metadata."""
+        with database(settings) as db:
+            result = db.execute("""
+                SELECT
+                    COUNT(*) AS total,
+                    COALESCE(SUM(bytes), 0) AS original_bytes,
+                    COALESCE(SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END), 0) AS active,
+                    COALESCE(SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS trashed,
+                    COALESCE(SUM(CASE WHEN favorite = 1 AND deleted_at IS NULL THEN 1 ELSE 0 END), 0) AS favorites,
+                    COALESCE(SUM(CASE WHEN media_type LIKE 'image/%' THEN 1 ELSE 0 END), 0) AS images,
+                    COALESCE(SUM(CASE WHEN media_type LIKE 'video/%' THEN 1 ELSE 0 END), 0) AS videos
+                FROM assets
+            """).fetchone()
+            albums = db.execute("SELECT COUNT(*) FROM albums").fetchone()[0]
+        return {
+            "total": result["total"], "active": result["active"],
+            "trashed": result["trashed"], "favorites": result["favorites"],
+            "images": result["images"], "videos": result["videos"],
+            "original_bytes": result["original_bytes"], "albums": albums,
+        }
+
     @app.get("/v1/assets", dependencies=[Depends(authorized)])
     def list_assets(
         search: str = Query("", max_length=128), favorite: bool = False, trashed: bool = False,
