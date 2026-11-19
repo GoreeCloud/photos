@@ -70,6 +70,7 @@ class Bridge(QObject):
     message = Signal(str)
     libraryChanged = Signal()
     loggedInChanged = Signal()
+    securityCompleted = Signal()
 
     def __init__(self, server, provider):
         super().__init__()
@@ -273,20 +274,79 @@ class Bridge(QObject):
             self.refreshAlbums()
         self.send("POST", "/v1/session", {"password": password}, done)
 
-    @Slot()
-    def logout(self):
-        if self._token:
-            self.send("DELETE", "/v1/session")
+    def _clear_session(self):
+        """Immediately discard session credentials and private in-memory library data."""
         self._token = ""
         self._generation += 1
         self._items = []
         self._albums = []
         self._album_id = ""
+        self._view = "library"
+        self._search = ""
         self._total = 0
         self._page = 0
         self.provider.images.clear()
         self.loggedInChanged.emit()
         self.libraryChanged.emit()
+
+    @Slot()
+    def logout(self):
+        if self._token:
+            self.send("DELETE", "/v1/session")
+        self._clear_session()
+
+    @Slot(str, str, str)
+    def changePassword(self, current, replacement, confirmation):
+        if not self._token:
+            self.error.emit("Unlock your library first")
+            return
+        if not 1 <= len(current) <= 1024:
+            self.error.emit("Enter the current library password")
+            return
+        if not 12 <= len(replacement) <= 1024:
+            self.error.emit("New password must contain 12–1024 characters")
+            return
+        if replacement == current:
+            self.error.emit("Choose a new password different from the current one")
+            return
+        if replacement != confirmation:
+            self.error.emit("New password and confirmation do not match")
+            return
+        generation = self._generation
+
+        def done(response):
+            if generation != self._generation or not self._token:
+                return
+            if response.get("changed") is not True or response.get("sessions_revoked") is not True:
+                self.error.emit("Password rotation was not confirmed")
+                return
+            self._clear_session()
+            self.securityCompleted.emit()
+            self.message.emit("Password changed; all devices signed out. Unlock again.")
+
+        self.send(
+            "POST", "/v1/settings/password",
+            {"current_password": current, "new_password": replacement}, done
+        )
+
+    @Slot(str)
+    def revokeAllSessions(self, current):
+        if not self._token or not 1 <= len(current) <= 1024:
+            self.error.emit("Unlock and enter your current library password")
+            return
+        generation = self._generation
+
+        def done(response):
+            if generation != self._generation or not self._token:
+                return
+            if response.get("sessions_revoked") is not True:
+                self.error.emit("Global sign-out was not confirmed")
+                return
+            self._clear_session()
+            self.securityCompleted.emit()
+            self.message.emit("Every device signed out; password unchanged.")
+
+        self.send("POST", "/v1/settings/revoke-sessions", {"password": current}, done)
 
     @Slot()
     def refresh(self):

@@ -35,6 +35,7 @@ The `photosctl` companion CLI prompts interactively for the password when no tok
 - The Linux native Save-original flow explicitly requests a local destination, rejects HTTP redirects, bounds network buffers and total original size, and promotes a 0600 scratch file only after a complete authenticated transfer. It denies active originals in trash and discards transfers when the session locks.
 - No hard delete or automatic trash purge exists yet; trash hides assets rather than freeing storage.
 - There is now a bearer-authenticated password-change endpoint requiring current-password confirmation; successful rotation invalidates all existing sessions. There is no public recovery route or GoreeCloud Identity integration.
+- The Linux Qt Quick Security dialog supports owner password rotation and global session revocation with masked fields. It requires the current secret again, clears private media and bearer state on confirmed success, and does not persist passwords. Native Qt unit tests check success, validation, revocation, and stale replies; real assistive-technology acceptance remains outstanding.
 - Browser build output must be independently served by a secure HTTPS web server; Dockerfile only runs the API.
 - Private `GET /v1/library/stats` returns bounded aggregate counters only; it requires the same bearer authorization as the library and never includes source filenames, paths, or hashes.
 - CORS does not replace authentication; do not add wildcard allowed origins.
