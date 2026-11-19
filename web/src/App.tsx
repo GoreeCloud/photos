@@ -6,6 +6,7 @@ type Asset = {
 };
 type Album = { id: string; name: string; count: number };
 const ENDPOINT = import.meta.env.VITE_PHOTOS_API_URL ?? "";
+const PAGE_SIZE = 36;
 const toDate = (value: string) => new Date(value).toLocaleDateString();
 const labelSize = (value: number) => value < 1048576
   ? (value / 1024).toFixed(0) + " KB" : (value / 1048576).toFixed(1) + " MB";
@@ -55,6 +56,9 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const requestNumber = useRef(0);
   const [search, setSearch] = useState("");
   const [section, setSection] = useState<"library" | "favorites" | "trash">("library");
   const [albumId, setAlbumId] = useState("");
@@ -70,17 +74,29 @@ export default function App() {
     if (search) params.set("search", search);
     if (section === "favorites") params.set("favorite", "true");
     if (section === "trash") params.set("trashed", "true");
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(page * PAGE_SIZE));
+    const activeRequest = ++requestNumber.current;
     try {
       const [assetData, albumData] = await Promise.all([
-        api<{ items: Asset[] }>(token, albumId
+        api<{ items: Asset[]; total: number }>(token, albumId
           ? "/v1/albums/" + encodeURIComponent(albumId) + "/assets"
           : "/v1/assets?" + params),
         api<{ items: Album[] }>(token, "/v1/albums")
       ]);
-      setAssets(assetData.items);
+      if (activeRequest !== requestNumber.current) return;
+      // Album endpoint currently returns a complete album; only the main library is server-paged.
+      const albumMatches = albumId ? assetData.items.filter(a =>
+        a.filename.toLocaleLowerCase().includes(search.toLocaleLowerCase())) : [];
+      const count = albumId ? albumMatches.length : assetData.total;
+      if (page > 0 && page * PAGE_SIZE >= count) { setPage(page - 1); return; }
+      setAssets(albumId ? albumMatches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : assetData.items);
+      setTotal(count);
       setAlbums(albumData.items);
-    } catch (e) { setNotice((e as Error).message); }
-  }, [token, search, section, albumId]);
+    } catch (e) {
+      if (activeRequest === requestNumber.current) setNotice((e as Error).message);
+    }
+  }, [token, search, section, albumId, page]);
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -183,7 +199,7 @@ export default function App() {
       <nav aria-label="Photo views">
         {(["library", "favorites", "trash"] as const).map((id) =>
           <button key={id} className={section === id && !albumId ? "active nav-item" : "nav-item"}
-            onClick={() => { setAlbumId(""); setSection(id); }}>
+            onClick={() => { setPage(0); setAlbumId(""); setSection(id); }}>
             <span aria-hidden="true">{id === "library" ? "▦" : id === "favorites" ? "♡" : "⌫"}</span>
             {id === "library" ? "All photos" : id === "favorites" ? "Favorites" : "Trash"}
           </button>)}
@@ -191,7 +207,7 @@ export default function App() {
       <div className="album-head"><strong>Albums</strong><button aria-label="Create album" onClick={createAlbum}>＋</button></div>
       <nav aria-label="Albums">{albums.map((album) =>
         <button key={album.id} className={albumId === album.id ? "active nav-item" : "nav-item"}
-          onClick={() => { setAlbumId(album.id); setSection("library"); }}>
+          onClick={() => { setPage(0); setAlbumId(album.id); setSection("library"); }}>
           <span aria-hidden="true">▧</span><span>{album.name}</span><small>{album.count}</small>
         </button>)}</nav>
       <p className="sidebar-foot">Self-hosted · No tracking</p>
@@ -202,11 +218,12 @@ export default function App() {
         <label className="search">
           <span aria-hidden="true">⌕</span><span className="visually-hidden">Search filenames</span>
           <input type="search" placeholder="Search your library" value={search}
-            onChange={(e) => setSearch(e.target.value)} />
+            onChange={(e) => { setPage(0); setSearch(e.target.value); }} />
         </label>
         <button className="quiet" onClick={async () => {
           await api(token, "/v1/session", { method: "DELETE" }).catch(() => undefined);
-          setToken(""); setSelected(null); setAssets([]); setAlbums([]);
+          requestNumber.current += 1;
+          setToken(""); setSelected(null); setAssets([]); setAlbums([]); setPage(0); setTotal(0);
         }}>Lock</button>
       </header>
       <div className="content">
@@ -229,7 +246,7 @@ export default function App() {
         {notice && <p className="message" role="status">{notice}
           <button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></p>}
         <div className="section-head"><h2>{assets.length ? "Your collection" : "Nothing here yet"}</h2>
-          <span>{assets.length} items shown</span></div>
+          <span aria-live="polite">{total} total · {assets.length} shown</span></div>
         {assets.length ? <div className="photo-grid">
           {assets.map(asset => <article key={asset.id} className="photo-card">
             <button className="photo-open" title={"Open " + asset.filename}
@@ -260,6 +277,15 @@ export default function App() {
           <p>Add photos or videos from your device to build your private collection.</p>
           <button className="primary" onClick={() => input.current?.click()}>Upload your first photo</button>
         </section>}
+        {total > PAGE_SIZE && <nav className="pagination" aria-label="Photo pages">
+          <button type="button" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+            Previous
+          </button>
+          <span aria-live="polite">Page {page + 1} of {Math.ceil(total / PAGE_SIZE)}</span>
+          <button type="button" disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage(p => p + 1)}>
+            Next
+          </button>
+        </nav>}
       </div>
     </main>
     {selected && <div className="modal-backdrop" role="presentation" onMouseDown={(e) => {
