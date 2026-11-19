@@ -55,6 +55,8 @@ def fake_server():
                 self.respond(201, {"id": ASSET_ID, "bytes": 20})
             elif self.path == "/v1/albums":
                 self.respond(201, {"id": ASSET_ID, "name": "Family"})
+            elif self.path == "/v1/settings/password":
+                self.respond(200, {"changed": True, "sessions_revoked": True})
             else:
                 self.respond(200, {"id": ASSET_ID})
 
@@ -184,3 +186,48 @@ def test_cli_offline_archive_verify_and_isolated_restore(tmp_path, capsys, monke
         ["restore-backup", "--input", str(archive), "--data-dir", str(dest)]
     ) == 2
     assert "nonexistent data directory" in capsys.readouterr().err.lower()
+
+
+
+def test_cli_change_password_prompts_and_clears_ephemeral_session(monkeypatch, capsys):
+    old = "private-old-password-2026"
+    new = "private-new-password-2026"
+    answers = iter([old, new, new])
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: next(answers))
+    monkeypatch.delenv("PHOTOS_ACCESS_TOKEN", raising=False)
+    with fake_server() as (server, events):
+        assert cli.main(["--server", server, "change-password"]) == 0
+        report = capsys.readouterr()
+        assert json.loads(report.out) == {"changed": True, "sessions_revoked": True}
+        for secret in [old, new, "session-from-test-only"]:
+            assert secret not in report.out + report.err
+        assert [event[1] for event in events] == [
+            "/v1/session", "/v1/settings/password", "/v1/session"
+        ]
+        payload = json.loads(events[1][3])
+        assert payload == {"current_password": old, "new_password": new}
+        assert events[2][0] == "DELETE"
+
+
+def test_cli_change_password_rejects_mismatch_without_network_access(monkeypatch, capsys):
+    responses = iter(["old-passphrase-2026", "fresh-passphrase-2026", "different-passphrase"])
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: next(responses))
+    monkeypatch.delenv("PHOTOS_ACCESS_TOKEN", raising=False)
+    with fake_server() as (server, events):
+        assert cli.main(["--server", server, "change-password"]) == 2
+        assert events == []
+        assert "confirmation" in capsys.readouterr().err.lower()
+
+
+def test_cli_change_password_accepts_explicit_token_without_login(monkeypatch, capsys):
+    old, new = "old-passphrase-2026", "new-passphrase-2026"
+    monkeypatch.setenv("PHOTOS_ACCESS_TOKEN", "preexisting-private-token")
+    values = iter([old, new, new])
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: next(values))
+    with fake_server() as (server, events):
+        assert cli.main(["--server", server, "change-password"]) == 0
+        assert len(events) == 1
+        assert events[0][1] == "/v1/settings/password"
+        assert events[0][2] == "Bearer preexisting-private-token"
+        output = capsys.readouterr()
+        assert "preexisting-private-token" not in output.out + output.err

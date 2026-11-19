@@ -199,6 +199,7 @@ def parse_args(argv: list[str] | None = None):
     photos.add_argument("--trash", action="store_true")
     photos.add_argument("--limit", type=int, default=60)
     photos.add_argument("--page", type=int, default=1)
+    sub.add_parser("change-password", help="Rotate library password and revoke all sessions")
     sub.add_parser("albums", help="List private albums")
     creation = sub.add_parser("create-album", help="Create a private album")
     creation.add_argument("name")
@@ -236,6 +237,33 @@ def run(args):
     api = Api(args.server, os.environ.get("PHOTOS_ACCESS_TOKEN", ""))
     if args.command == "health":
         return api.request("GET", "/health")
+    if args.command == "change-password":
+        current = getpass.getpass("Current private library password: ")
+        proposed = getpass.getpass("New private library password: ")
+        confirmed = getpass.getpass("Confirm new private library password: ")
+        if not current or len(proposed) < 12 or len(proposed) > 1024:
+            raise PhotosError("New password must be 12-1024 characters")
+        if proposed != confirmed:
+            raise PhotosError("New password confirmation does not match")
+        if proposed == current:
+            raise PhotosError("Choose a new password different from the current one")
+        ephemeral = not bool(api.token)
+        if ephemeral:
+            result = api.request("POST", "/v1/session", {"password": current})
+            api.token = result["access_token"]
+        try:
+            return api.request("POST", "/v1/settings/password", {
+                "current_password": current, "new_password": proposed
+            })
+        finally:
+            current = proposed = confirmed = ""
+            if ephemeral:
+                # Successful rotation invalidates *all* tokens; logout then
+                # returns 401. A failed rotation must still revoke our session.
+                try:
+                    api.sign_out()
+                except PhotosError:
+                    pass
     ephemeral = api.sign_in()
     try:
         if args.command == "list":
