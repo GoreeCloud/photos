@@ -32,9 +32,13 @@ Outputs are JSON and failures return nonzero exit status. Downloads refuse exist
 **Stop the API and all writers first.** Only the offline backup commands work without any running API or login.
 
 ```sh
+uv run --frozen photosctl verify-library --data-dir /private/photos-data
 uv run --frozen photosctl backup --data-dir /private/photos-data --output /separate-private-volume/photos.tar
 uv run --frozen photosctl verify-backup --input /separate-private-volume/photos.tar
 uv run --frozen photosctl restore-backup --input /separate-private-volume/photos.tar --data-dir /new/empty/restore-target
 ```
 
 These archives are **unencrypted**; keep them in a restricted encrypted volume and independently test restoration before claiming recovery readiness. The CLI provides no scheduled backup, no remote off-site replication, no E2EE, and no silent media deletion. Android and browser application owners can use this supported companion CLI to administer their self-hosted API from a terminal; the mobile app itself does not expose a general shell.
+
+
+`verify-library` reads local SQLite metadata and SHA-256-checks every indexed original. It rejects unexpected/unindexed originals or previews and unsafe media symlinks, and reports missing reconstructible previews without deleting or repairing them. Stop all library writers first: a check against an actively changing library does not provide a consistent snapshot. This is **not** scheduled monitoring or an automatic recovery mechanism.
