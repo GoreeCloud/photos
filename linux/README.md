@@ -12,3 +12,8 @@ Download security: the Linux native client denies network redirects for authenti
 
 
 Native album use: choose an existing album with the Qt Quick selector and select **Open album**, or enter a new album name and select **Create**. In All/Favorites, **Add to album** adds an item to the selected album. Inside an album, **Remove from album** only deletes its membership; originals remain available in the main library. Album membership paging and filename search are served by the private API. There is no external sync or sharing.
+
+
+## Bounded native network responses
+
+Authenticated JSON responses are bounded to 4 MiB and thumbnail responses to 6 MiB, with Qt's network read buffer capped and a 30-second transfer timeout. Thumbnail headers are inspected with Qt 6.12's QImageReader before decoding; only JPEG previews up to 2048 pixels per axis are accepted. HTTPS/loopback-only URLs and manual redirect rejection remain enforced. Oversize or corrupt responses do not enter the image cache. The manual native Linux CI workflow runs the synthetic authenticated network-response unit tests alongside the original-download and album tests; the required cross-platform CI continues to do pinned QML/static checks without relying on unreliable Ubuntu EGL mirrors.

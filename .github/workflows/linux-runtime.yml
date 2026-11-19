@@ -32,4 +32,4 @@ jobs:
         timeout-minutes: 2
         run: |
           QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
-            python -m unittest discover -s linux/tests -p 'test_download.py' -v
+            python -m unittest discover -s linux/tests -p 'test_*.py' -v
