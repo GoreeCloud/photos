@@ -12,7 +12,7 @@ Compose Android┘                 ├── /data/objects/xx/<sha256>.<ext>
 - **Linux**: PySide6 6.12 / Qt Quick with asynchronous QNetworkAccessManager, photo picker, password session, grid preview provider, favorites and trash.
 - **Android**: Kotlin, Jetpack Compose and Android document picker; explicit foreground uploads; HTTP(S) library API; image decode only after authenticated thumbnail download.
 - **Service**: FastAPI, scrypt credential bootstrap, short-lived bearer sessions, per-process login limiter, media magic-byte checks, Pillow preview generation, SQLite WAL-ready single-writer metadata.
-- **Storage**: content-addressable SHA-256 media objects; image previews stored separately with EXIF stripped; soft deletion and album joins.
+- **Storage**: content-addressable SHA-256 media objects; image previews stored separately with EXIF stripped; soft deletion and album joins. The offline manual backup CLI uses SQLite's consistent backup interface plus verified originals, checksums, and safe archive restore to a new data directory.
 - **Data scope**: a single library; the first user is a local bootstrap credential, not an IdP with groups, RBAC, or delegated access.
 
 ## Explicitly deferred

@@ -50,6 +50,17 @@ cd ../web && npm ci && npm run build
 cd ../android && ./gradlew :app:assembleDebug
 ```
 
+### Local backup and recovery
+
+**Stop the Photos API and any uploading clients first.** From `api/`, run:
+
+```bash
+uv run --frozen python -m app.backup backup --data-dir /absolute/path/to/data --output /private/backups/photos.tar
+uv run --frozen python -m app.backup restore --input /private/backups/photos.tar --data-dir /new/empty/photos-data
+```
+
+The backup includes a consistent SQLite snapshot, originals, thumbnails, and SHA-256 manifest. Restore verifies archive member safety, checksums, database integrity and media hashes, and refuses an existing destination. The output tar is **unencrypted** and must be protected with disk encryption and restricted access; archive mode is 0600. This is a **manual offline tool**, not automatic backup scheduling, remote replication, a tested disaster-recovery strategy, or E2EE. See [security and operations](docs/SECURITY.md).
+
 Refer to [security and operations](docs/SECURITY.md), [architecture](docs/ARCHITECTURE.md), [integration boundaries](docs/INTEGRATIONS.md), and [third-party licenses](docs/THIRD_PARTY.md).
 
 ## Safety / known gaps
