@@ -62,6 +62,8 @@ def fake_server():
                 self.respond(201, {"id": ASSET_ID, "name": "Family"})
             elif self.path == "/v1/settings/password":
                 self.respond(200, {"changed": True, "sessions_revoked": True})
+            elif self.path == "/v1/settings/revoke-sessions":
+                self.respond(200, {"sessions_revoked": True})
             else:
                 self.respond(200, {"id": ASSET_ID})
 

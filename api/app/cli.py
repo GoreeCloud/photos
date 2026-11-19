@@ -200,6 +200,7 @@ def parse_args(argv: list[str] | None = None):
     photos.add_argument("--limit", type=int, default=60)
     photos.add_argument("--page", type=int, default=1)
     sub.add_parser("change-password", help="Rotate library password and revoke all sessions")
+    sub.add_parser("revoke-sessions", help="Revoke all library sessions without changing the password")
     sub.add_parser("albums", help="List private albums")
     sub.add_parser("stats", help="Read private library counts and original storage bytes")
     creation = sub.add_parser("create-album", help="Create a private album")
@@ -242,6 +243,23 @@ def run(args):
     api = Api(args.server, os.environ.get("PHOTOS_ACCESS_TOKEN", ""))
     if args.command == "health":
         return api.request("GET", "/health")
+    if args.command == "revoke-sessions":
+        current = getpass.getpass("Current private library password: ")
+        if not current:
+            raise PhotosError("Current password is required")
+        ephemeral = not bool(api.token)
+        if ephemeral:
+            auth = api.request("POST", "/v1/session", {"password": current})
+            api.token = auth["access_token"]
+        try:
+            return api.request("POST", "/v1/settings/revoke-sessions", {"password": current})
+        finally:
+            current = ""
+            if ephemeral:
+                try:
+                    api.sign_out()
+                except PhotosError:
+                    pass
     if args.command == "change-password":
         current = getpass.getpass("Current private library password: ")
         proposed = getpass.getpass("New private library password: ")

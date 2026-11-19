@@ -302,6 +302,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             db.execute("DELETE FROM auth_failures")
         return {"changed": True, "sessions_revoked": True}
 
+    @app.post("/v1/settings/revoke-sessions", dependencies=[Depends(authorized)])
+    def revoke_all_sessions(body: PasswordIn):
+        """Manually revoke every library session without changing the credential."""
+        with database(settings) as db:
+            db.execute("BEGIN IMMEDIATE")
+            record = db.execute(
+                "SELECT value FROM configuration WHERE key='password'"
+            ).fetchone()
+            if not record or not check_password(body.password, record["value"]):
+                raise HTTPException(401, "Invalid current password")
+            db.execute("DELETE FROM sessions")
+        return {"sessions_revoked": True}
+
     @app.get("/v1/library/stats", dependencies=[Depends(authorized)])
     def library_stats():
         """Private aggregate counts; never exposes filenames, paths or source metadata."""
