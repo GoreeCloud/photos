@@ -16,7 +16,7 @@
 | Reversible trash | Yes | Yes | Yes | Yes |
 | Albums and membership | Yes | Yes | Planned | Planned |
 | Filename search | Yes | Yes | Yes | Yes |
-| Original download / viewing | Yes | Yes | Planned | Planned |
+| Original download / viewing | Yes | Yes | Download only | Planned |
 | Foreground, explicitly selected folder import with duplicate checks | Yes | N/A | N/A | Yes |
 | Background camera roll backup | No | N/A | N/A | Planned with consent |
 | E2EE / multi-user sharing / face recognition | No | No | No | No |
@@ -37,7 +37,7 @@ For a single-host container trial, run `docker compose up --build` with `PHOTOS_
 
 ### Linux app
 
-From `linux/`, create a Python virtual environment, install `requirements.txt`, and run `python main.py --server http://127.0.0.1:8787`. Uses **Qt Quick 6.12** through PySide6; a remote server must use HTTPS. The source is native Qt Quick rather than an embedded browser or Electron wrapper.
+From `linux/`, create a Python virtual environment, install `requirements.txt`, and run `python main.py --server http://127.0.0.1:8787`. Uses **Qt Quick 6.12** through PySide6; a remote server must use HTTPS. The native Save button streams an authenticated original into a private 0600 temporary file, then atomically saves without overwriting an existing destination; no full-size media is retained in memory. The source is native Qt Quick rather than an embedded browser or Electron wrapper.
 
 ### Android app
 

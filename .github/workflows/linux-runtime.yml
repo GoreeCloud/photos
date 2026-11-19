@@ -28,3 +28,8 @@ jobs:
           cat qt-smoke.log
           # A valid GUI stays open until timeout; an import or QML error exits early.
           test "$rc" -eq 124
+      - name: Synthetic Qt native original-download integration
+        timeout-minutes: 2
+        run: |
+          QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+            python -m unittest discover -s linux/tests -p 'test_download.py' -v
