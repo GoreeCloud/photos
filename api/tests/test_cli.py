@@ -31,6 +31,11 @@ def fake_server():
             events.append(("GET", self.path, self.headers.get("Authorization", "")))
             if self.path == "/health":
                 self.respond(200, {"status": "ok"})
+            elif self.path == "/v1/library/stats":
+                self.respond(200, {
+                    "total": 1, "active": 1, "favorites": 1, "trashed": 0,
+                    "images": 1, "videos": 0, "albums": 0, "original_bytes": 1234,
+                })
             elif self.path.startswith("/v1/assets?"):
                 self.respond(200, {"items": [], "total": 0})
             elif self.path.startswith("/v1/assets/") and self.path.endswith("/original"):
@@ -184,3 +189,17 @@ def test_cli_offline_archive_verify_and_isolated_restore(tmp_path, capsys, monke
         ["restore-backup", "--input", str(archive), "--data-dir", str(dest)]
     ) == 2
     assert "nonexistent data directory" in capsys.readouterr().err.lower()
+
+
+
+def test_cli_private_stats_json_and_auth(monkeypatch, capsys):
+    monkeypatch.setenv("PHOTOS_ACCESS_TOKEN", "private-stats-test-token")
+    with fake_server() as (server, events):
+        assert cli.main(["--server", server, "stats"]) == 0
+        raw = capsys.readouterr()
+        metrics = json.loads(raw.out)
+        assert metrics["original_bytes"] == 1234
+        assert metrics["favorites"] == 1
+        assert "private-stats-test-token" not in raw.out + raw.err
+        assert events[-1][0:2] == ("GET", "/v1/library/stats")
+        assert events[-1][2] == "Bearer private-stats-test-token"

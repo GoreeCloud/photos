@@ -45,7 +45,7 @@ Open `android/` in Android Studio with JDK 17 and Android SDK 35, and build `app
 
 ### First-party command-line interface (CLI)
 
-From `api/`, run `uv sync --frozen --group dev`, then `uv run --frozen photosctl --help`. The supported CLI can inspect server health, list/search photos and albums, explicitly upload/download, manage favorites/trash, and run offline backup/verification/restore through `photosctl`. Remote servers require HTTPS. Passwords are prompted without command-line arguments; an optional `PHOTOS_ACCESS_TOKEN` may be supplied through a private environment for scripts. The CLI stores no credentials and denies HTTP redirects. See [CLI setup, use and security](api/CLI.md). It is a supported companion command for browser and Android clients; those GUIs do not directly embed a terminal.
+From `api/`, run `uv sync --frozen --group dev`, then `uv run --frozen photosctl --help`. The supported CLI can inspect server health and authenticated library storage statistics, list/search photos and albums, explicitly upload/download, manage favorites/trash, and run offline backup/verification/restore through `photosctl`. Remote servers require HTTPS. Passwords are prompted without command-line arguments; an optional `PHOTOS_ACCESS_TOKEN` may be supplied through a private environment for scripts. The CLI stores no credentials and denies HTTP redirects. See [CLI setup, use and security](api/CLI.md). It is a supported companion command for browser and Android clients; those GUIs do not directly embed a terminal.
 
 ## Verification
 
