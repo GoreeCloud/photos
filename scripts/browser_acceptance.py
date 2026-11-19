@@ -86,6 +86,19 @@ class Chrome:
         })()""".replace("LABEL", json.dumps(label))
         assert await self.js(js), "Button missing or disabled: " + label
 
+    async def tab(self, shift=False):
+        for kind in ("keyDown", "keyUp"):
+            await self.run(
+                "Input.dispatchKeyEvent",
+                {
+                    "type": kind,
+                    "key": "Tab",
+                    "code": "Tab",
+                    "windowsVirtualKeyCode": 9,
+                    "modifiers": 8 if shift else 0,
+                },
+            )
+
     async def escape(self):
         for kind in ("keyDown", "keyUp"):
             await self.run(
@@ -163,6 +176,45 @@ async def check_browser(app_url: str, cdp_url: str, duplicate_input: Path):
             'document.querySelector(".section-head span")?.textContent.includes("1 total")'
         )
         print("PASS: private duplicate preflight skips upload without restoring media", flush=True)
+        assert await browser.js(
+            '(() => { const button=document.querySelector(".photo-open");'
+            ' if (!button || button.disabled) return false;'
+            ' button.focus(); button.click(); return true; })()'
+        )
+        await browser.wait(
+            'Boolean(document.querySelector(".photo-dialog[role=dialog][aria-modal=true]"))',
+            "private modal preview",
+        )
+        await browser.wait(
+            'document.activeElement?.getAttribute("aria-label")==="Close preview"',
+            "modal close-button focus",
+        )
+        await browser.wait(
+            'Boolean(document.querySelector(".dialog-foot a.download"))',
+            "authenticated media preview download",
+        )
+        assert await browser.js(
+            '(() => { const a=document.querySelector(".dialog-foot a.download");'
+            ' return a?.download==="browser-synthetic-only.png"'
+            ' && a.getAttribute("href").startsWith("blob:"); })()'
+        ), "Preview download must use private bounded in-memory Blob"
+        await browser.tab(shift=True)
+        await browser.wait(
+            'document.activeElement?.matches(".dialog-foot a.download")',
+            "Shift+Tab wraps to last modal action",
+        )
+        await browser.tab()
+        await browser.wait(
+            'document.activeElement?.getAttribute("aria-label")==="Close preview"',
+            "Tab wraps back to modal close",
+        )
+        await browser.escape()
+        await browser.wait(
+            '!document.querySelector(".photo-dialog")'
+            ' && document.activeElement?.classList.contains("photo-open")',
+            "Escape closes private modal and restores original photo focus",
+        )
+        print("PASS: modal accessibility, Tab focus trap, Escape and private Blob download", flush=True)
         await browser.click("Security")
         await browser.wait(
             'document.activeElement?.id==="photos-current-secret"', "security autofocus"

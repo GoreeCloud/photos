@@ -53,3 +53,8 @@ When you deliberately select files with **Add photos**, the browser computes a W
 ## Purpose-led photo timeline
 
 The unlocked web app now prioritizes a responsive, image-first media gallery, grouping each page's assets by the **UTC date of their import** rather than pretending to know an EXIF capture date. Grouping preserves backend page order; each section has a semantic heading and an item count. The original file's capture timestamp or GPS metadata are not indexed, geolocated, or sent elsewhere by this UI. Library and storage metrics remain available through an accessible, keyboard-operable **Library details** disclosure rather than dominating the photo canvas. The centralized GoreeCloud UI design tokens still govern color, typography and focus. See [purpose-led UI acceptance](../docs/UX.md). Verify small-screen photo crops, contrast, screen readers and real photo collections before a release.
+
+
+## Synthetic browser preview keyboard acceptance
+
+The reusable local Chromium harness also opens an active photo card in the real React application, verifies the semantic modal and initial focus on Close, tests Shift+Tab and Tab wrapping inside the preview, and verifies Escape dismisses the modal and returns focus to the originating photo card. The native Save-original link must point to a bounded, authenticated in-memory `blob:` URL rather than an unauthenticated public media URL. These tests use synthetic media and cannot replace screen-reader, Firefox/WebKit, or real-life visual acceptance.
