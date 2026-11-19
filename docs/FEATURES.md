@@ -14,7 +14,7 @@ This is a development-stage self-hosted photo library. Capabilities below descri
 | Restore from trash | Implemented | Implemented | Implemented | Implemented |
 | Albums | Full create/rename/delete/membership API | Create, rename, delete, add/remove | Browse, create, add/remove members | Browse, create, add/remove members |
 | Original media read and partial-byte streaming | Implemented | Download/preview | Native private Save-original dialog | User-directed SAF export with SHA-256 verification |
-| Duplicate preflight by SHA-256 | Implemented | Not yet | Not yet | Used in explicit folder import |
+| Duplicate preflight by SHA-256 | Implemented | Selected files up to 16 MiB, server fallback for larger files | Not yet | Used in explicit folder import |
 | Explicit folder import | Via ordinary uploads | File chooser only | File picker only | System document-tree picker, foreground-only |
 | Offline backup and temporary restore drill | Manual unencrypted CLI, read-only verifier and disposable recovery rehearsal | Not applicable | Not applicable | Not applicable |
 | Multi-user and GoreeCloud Identity SSO | Not implemented | Not implemented | Not implemented | Not implemented |
