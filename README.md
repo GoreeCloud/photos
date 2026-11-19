@@ -43,6 +43,10 @@ From `linux/`, create a Python virtual environment, install `requirements.txt`, 
 
 Open `android/` in Android Studio with JDK 17 and Android SDK 35, and build `app`. The app has **no** blanket storage permission: images and videos are selected explicitly through the Android document picker. For loopback development, use `adb reverse tcp:8787 tcp:8787` and its preconfigured loopback URL. Remote servers require valid HTTPS. No camera-roll background service runs without consent.
 
+### First-party command-line interface (CLI)
+
+From `api/`, run `uv sync --frozen --group dev`, then `uv run --frozen photosctl --help`. The supported CLI can inspect server health, list/search photos and albums, explicitly upload/download, manage favorites/trash, and run offline backup/verification/restore through `photosctl`. Remote servers require HTTPS. Passwords are prompted without command-line arguments; an optional `PHOTOS_ACCESS_TOKEN` may be supplied through a private environment for scripts. The CLI stores no credentials and denies HTTP redirects. See [CLI setup, use and security](api/CLI.md). It is a supported companion command for browser and Android clients; those GUIs do not directly embed a terminal.
+
 ## Verification
 
 ```bash

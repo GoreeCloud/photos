@@ -5,7 +5,7 @@
 ## Near-term: security and recoverability
 - Verify local and representative real-device workflows for Android and Linux, including denied permissions and accessibility.
 - Add independently testable backup verification and recovery drills; establish encrypted off-device copies and owner-approved recovery procedures. The existing archive is manual and unencrypted.
-- Add read-only/administrative first-party CLI support with documented credential handling; maintain automated CLI checks.
+- Extend the implemented first-party CLI with additional administrative operations and automate cross-platform release verification; current authentication uses the single-library credential.
 - Harden untrusted media handling, ingress limits, authorized sessions, and deployment defaults.
 - Keep mandatory protected-branch checks and all clients compiling across changes.
 

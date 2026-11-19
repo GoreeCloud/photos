@@ -12,6 +12,8 @@ Persistent state is `PHOTOS_DATA_DIR/photos.sqlite3`, `objects/` and `previews/`
 
 The password hash is scrypt with a random per-library 16-byte salt. Session tokens are random 256-bit URL-safe tokens stored in SQLite as SHA-256 digests, expiring after 24 hours; revocation applies on lock. Passwords and tokens should never be stored in logs or shell history. Browser token resides in React component memory, Android in process memory, Linux in process memory; all expire on process exit or API time.
 
+The `photosctl` companion CLI prompts interactively for the password when no token is supplied, revokes the ephemeral session on exit, and does not write credentials to a configuration file. `PHOTOS_ACCESS_TOKEN` is an opt-in environment credential for scripts and can be visible to privileged local processes. Redirects and external cleartext HTTP are rejected; downloads never overwrite existing files.
+
 ## Deployment guards
 - No public cloud storage or untrusted third-party AI calls.
 - Compose binds only to loopback, drops Linux capabilities, and uses a non-root user.
