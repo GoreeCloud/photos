@@ -15,15 +15,15 @@ h2 { font-size: var(--gc-type-heading); }
   padding:0 var(--gc-space-6); font-weight:700; text-decoration:none; }
 .primary:hover { filter:brightness(1.08); }
 .login-wrap { min-height:100dvh; display:grid; place-items:center; padding:var(--gc-space-6); }
-.login-card { width:min(100%,440px); padding:clamp(24px,6vw,50px); border-radius:var(--gc-radius-lg);
+.login-card { min-width:0; width:min(100%,440px); padding:clamp(24px,6vw,50px); border-radius:var(--gc-radius-lg);
   background:var(--gc-surface); box-shadow:var(--gc-shadow-2); }
 .brand-mark { display:grid; place-items:center; width:60px; height:60px; margin-bottom:24px;
   background:var(--gc-brand-container); color:var(--gc-on-brand-container);
   border-radius:var(--gc-radius-md); font-size:32px; }
 .login-card p:not(.eyebrow) { color:var(--gc-text-soft); line-height:1.55; }
-.login-card form { display:grid; gap:12px; margin-top:32px; }
+.login-card form { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin-top:32px; }
 .login-card label { font-weight:650; font-size:var(--gc-type-support); }
-.login-card input { min-height:var(--gc-control-min); border:1px solid var(--gc-outline-soft);
+.login-card input { width:100%; min-width:0; min-height:var(--gc-control-min); border:1px solid var(--gc-outline-soft);
   border-radius:var(--gc-radius-sm); background:var(--gc-surface); color:var(--gc-text); padding:0 14px; }
 .login-card .footer-note { margin:28px 0 0; font-size:var(--gc-type-label); }
 .app-layout { display:grid; grid-template-columns:255px minmax(0,1fr); min-height:100dvh; }
